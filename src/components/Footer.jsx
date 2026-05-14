@@ -1,5 +1,6 @@
 import { Container, Row, Col } from 'react-bootstrap';
-import { Instagram, Phone, Mail } from 'lucide-react';
+import { Phone, Mail } from 'lucide-react';
+import { FaInstagram } from 'react-icons/fa';
 
 export default function Footer() {
   return (
@@ -16,7 +17,7 @@ export default function Footer() {
             <Col md={6}>
               <div className="d-flex flex-column flex-md-row justify-content-md-end align-items-start align-items-md-center gap-3">
                 <a href="#" className="text-white d-flex align-items-center gap-2">
-                  <Instagram size={24} />
+                  <FaInstagram size={24} />
                   <span>@mitienda</span>
                 </a>
                 <div className="d-flex align-items-center gap-2">

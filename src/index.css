@@ -1,9 +1,6 @@
 /* Bootstrap global */
 @import 'bootstrap/dist/css/bootstrap.min.css';
 
-/* Tipografías personalizadas */
-@import './fonts.css';
-
 /* Variables de color y tema */
 @import './theme.css';
 

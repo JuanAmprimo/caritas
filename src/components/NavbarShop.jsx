@@ -11,7 +11,7 @@ export default function NavbarShop({ activeTab, setActiveTab }) {
           style={{ fontSize: '1.5rem' }}
         >
           <ShoppingCart size={32} className="me-2" />
-          Mi Tienda Premium
+          Caritas
         </Navbar.Brand>
 
         <Navbar.Toggle aria-controls="navbar-nav" className="border-white" />
