@@ -42,12 +42,34 @@ export default function ListManager({ searchTerm }) {
       setItems(updatedItems);
     }
   };
+    // funcion añadir item con validaciones
+    const addItem = () => {
+    // 1. Validar que existan campos
+    if (fields.length === 0) {
+      alert("Primero debes agregar campos a la lista antes de añadir un item.");
+      return;
+    }
 
-  const addItem = () => {
+    // 2. Validar que todos los campos tengan valor
+    const missingFields = fields.filter(
+      f => !newItem[f.name] || newItem[f.name].toString().trim() === ""
+    );
+
+    if (missingFields.length > 0) {
+      alert(
+        `Completa todos los campos antes de agregar el item. Faltan: ${missingFields
+          .map(f => f.name)
+          .join(", ")}`
+      );
+      return;
+    }
+
+    // 3. Si pasa las validaciones, agregar el item
     const item = { id: Date.now().toString(), ...newItem };
     setItems([...items, item]);
     setNewItem({});
   };
+
 
   const deleteItem = (id) => setItems(items.filter(item => item.id !== id));
   const openEditItem = (item) => { setEditingItem(item); setShowEditItem(true); };
