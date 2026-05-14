@@ -6,12 +6,13 @@ export default function ProductForm({ formData, handleInputChange, handleImageUp
     <Row>
       <Col md={6} lg={3} className="mb-3">
         <Form.Group>
-          <Form.Label>Nombre del Producto *</Form.Label>
+          <Form.Label>Nombre de la Donacion*</Form.Label>
           <Form.Control
             type="text"
             value={formData.name || ''}
             onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="Ej: Laptop HP"
+            required
           />
         </Form.Group>
       </Col>
@@ -27,6 +28,7 @@ export default function ProductForm({ formData, handleInputChange, handleImageUp
               onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
               placeholder="0.00"
               step="0.01"
+              required
             />
           </InputGroup>
         </Form.Group>
@@ -58,7 +60,7 @@ export default function ProductForm({ formData, handleInputChange, handleImageUp
 
       <Col md={12} lg={3} className="mb-3">
         <Form.Group>
-          <Form.Label>Imagen del Producto</Form.Label>
+          <Form.Label>Imagen del Producto (opcional)</Form.Label>
           <Form.Control
             type="file"
             accept="image/*"

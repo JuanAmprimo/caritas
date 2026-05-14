@@ -80,20 +80,30 @@ export default function PriceCalculator() {
         <Card.Header style={{ backgroundColor: '#6366f1' }} className="text-white">
           <h4 className="mb-0">🛒 Lista de Productos y Cálculo Final</h4>
         </Card.Header>
-        <Card.Body>
-          {products.length === 0 ? (
-            <p className="text-muted">No hay productos agregados. Agrega uno arriba para comenzar.</p>
-          ) : (
-            <ProductTable
-              products={products}
-              updateQuantity={updateQuantity}
-              calculateSubtotal={calculateSubtotal}
-              calculateTotal={calculateTotal}
-              editProduct={editProduct}
-              deleteProduct={deleteProduct}
-            />
+          <Card.Body>
+            {products.length === 0 ? (
+              <p className="text-muted">No hay productos agregados. Agrega uno arriba para comenzar.</p>
+            ) : (
+              <div
+                style={{
+                  maxHeight: products.length > 3 ? "300px" : "none",
+                  overflowY: products.length > 3 ? "auto" : "visible",
+                  border: products.length > 3 ? "1px solid #ccc" : "none",
+                  padding: products.length > 3 ? "10px" : "0",
+                }}
+              >
+                <ProductTable
+                  products={products}
+                  updateQuantity={updateQuantity}
+                  calculateSubtotal={calculateSubtotal}
+                  calculateTotal={calculateTotal}
+                  editProduct={editProduct}
+                  deleteProduct={deleteProduct}
+                />
+            </div>
           )}
         </Card.Body>
+
       </Card>
     </Container>
   );
