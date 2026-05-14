@@ -1,0 +1,27 @@
+:root {
+  --bs-body-bg: #f3f4f6;
+  --bs-body-color: oklch(0.145 0 0);
+
+  --bs-primary: #030213;
+  --bs-secondary: #ececf0;
+  --bs-danger: #d4183d;
+  --bs-success: #198754;
+  --bs-warning: #ffc107;
+  --bs-info: #0dcaf0;
+  --bs-light: #f3f3f5;
+  --bs-dark: #0a0a0a;
+
+  --font-size: 16px;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --bs-body-bg: oklch(0.145 0 0);
+  --bs-body-color: oklch(0.985 0 0);
+
+  --bs-primary: oklch(0.985 0 0);
+  --bs-secondary: oklch(0.269 0 0);
+  --bs-danger: oklch(0.396 0.141 25.723);
+}

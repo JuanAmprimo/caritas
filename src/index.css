@@ -1,0 +1,15 @@
+/* Bootstrap global */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* Tipografías personalizadas */
+@import './fonts.css';
+
+/* Variables de color y tema */
+@import './theme.css';
+
+/* Estilos base */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
