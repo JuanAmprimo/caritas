@@ -8,10 +8,7 @@ import ItemForm from './ItemForm';
 import ItemTable from './ItemTable';
 
 export default function ListManager({ searchTerm }) {
-  const [fields, setFields] = useState([
-    { id: '1', name: 'nombre', type: 'text' },
-    { id: '2', name: 'cantidad', type: 'number' },
-  ]);
+  const [fields, setFields] = useState([]);
   const [items, setItems] = useState([]);
   const [showAddField, setShowAddField] = useState(false);
   const [showEditItem, setShowEditItem] = useState(false);
@@ -19,6 +16,7 @@ export default function ListManager({ searchTerm }) {
   const [newFieldType, setNewFieldType] = useState('text');
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({});
+  const [scrollMode, setScrollMode] = useState(false); // 🔹 estado para alternar vista
 
   const addField = () => {
     if (newFieldName.trim()) {
@@ -102,13 +100,24 @@ export default function ListManager({ searchTerm }) {
             addItem={addItem}
           />
 
-          {/* Tabla Items filtrados */}
-          <ItemTable
-            fields={fields}
-            items={filteredItems}
-            openEditItem={openEditItem}
-            deleteItem={deleteItem}
-          />
+          {/* Tabla Items con scroll opcional */}
+          <div
+            style={{
+              maxHeight: scrollMode ? "300px" : "none",
+              overflowY: scrollMode ? "auto" : "visible",
+              border: scrollMode ? "1px solid #ccc" : "none",
+              padding: scrollMode ? "10px" : "0",
+            }}
+          >
+            <ItemTable
+              fields={fields}
+              items={filteredItems}
+              openEditItem={openEditItem}
+              deleteItem={deleteItem}
+              scrollMode={scrollMode}
+              setScrollMode={setScrollMode}
+            />
+          </div>
         </Card.Body>
       </Card>
 

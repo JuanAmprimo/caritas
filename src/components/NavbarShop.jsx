@@ -62,7 +62,7 @@ export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSea
                 className="position-absolute top-0 start-100 translate-middle rounded-pill"
                 style={{ fontSize: '0.65rem' }}
               >
-                3
+                
               </Badge>
             </Nav.Link>
           </Nav>
