@@ -1,21 +1,11 @@
 import { Table, Button } from 'react-bootstrap';
 import { Edit2, Trash2 } from 'lucide-react';
 
-export default function ItemTable({ fields, items, openEditItem, deleteItem, scrollMode, setScrollMode }) {
+export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
   return (
     <div>
-      {/* Encabezado con botón pegado al texto */}
-      <div className="d-flex align-items-center mb-3">
-        <h5 className="mb-0">Items de la Lista</h5>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="ms-2"   // 🔹 margen pequeño a la izquierda
-          onClick={() => setScrollMode(!scrollMode)}
-        >
-          {scrollMode ? "Ver extendido" : "Ver en bloque"}
-        </Button>
-      </div>
+      {/* Encabezado sin botón */}
+      <h5 className="mb-3">Items de la Lista</h5>
 
       {items.length === 0 ? (
         <p className="text-muted">No hay items en la lista. Agrega uno arriba.</p>
@@ -62,4 +52,3 @@ export default function ItemTable({ fields, items, openEditItem, deleteItem, scr
     </div>
   );
 }
-

@@ -68,7 +68,7 @@ export default function ListManager({ searchTerm }) {
 
   return (
     <Container fluid className="py-4">
-      <Card className="shadow-sm border-0">
+      <Card className="shadow-sm border-0" style={{ backgroundColor: '#15e0e7' }}>
         <Card.Header style={{ backgroundColor: '#8b5cf6' }} className="text-white">
           <h4 className="mb-0">📋 Gestor de Listas</h4>
         </Card.Header>
@@ -100,24 +100,22 @@ export default function ListManager({ searchTerm }) {
             addItem={addItem}
           />
 
-          {/* Tabla Items con scroll opcional */}
-          <div
-            style={{
-              maxHeight: scrollMode ? "300px" : "none",
-              overflowY: scrollMode ? "auto" : "visible",
-              border: scrollMode ? "1px solid #ccc" : "none",
-              padding: scrollMode ? "10px" : "0",
-            }}
-          >
-            <ItemTable
-              fields={fields}
-              items={filteredItems}
-              openEditItem={openEditItem}
-              deleteItem={deleteItem}
-              scrollMode={scrollMode}
-              setScrollMode={setScrollMode}
-            />
-          </div>
+          {/* Tabla Items siempre en bloque con scroll */}
+            <div
+              style={{
+                height:"250px",
+                overflowY: filteredItems.length > 0 ? "scroll" : "visible",
+                border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
+                padding: filteredItems.length > 0 ? "10px" : "0",
+              }}
+            >
+              <ItemTable
+                fields={fields}
+                items={filteredItems}
+                openEditItem={openEditItem}
+                deleteItem={deleteItem}
+              />
+            </div>
         </Card.Body>
       </Card>
 

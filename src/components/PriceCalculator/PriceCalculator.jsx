@@ -60,10 +60,10 @@ export default function PriceCalculator() {
       {/* Formulario */}
       <Card className="shadow-sm mb-4 border-0">
         <Card.Header style={{ backgroundColor: '#10b981' }} className="text-white">
-          <h4 className="mb-0">💰 Calculadora de Precios</h4>
+          <h4 className="mb-0">💰 Calculadora de Precios de Donaciones</h4>
         </Card.Header>
         <Card.Body>
-          <h5>{editingId ? 'Editar Producto' : 'Agregar Producto'}</h5>
+          <h5>{editingId ? 'Modificar Donación' : 'Nueva Donación'}</h5>
           <ProductForm
             formData={formData}
             handleInputChange={handleInputChange}

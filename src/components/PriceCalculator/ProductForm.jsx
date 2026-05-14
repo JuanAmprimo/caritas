@@ -11,7 +11,7 @@ export default function ProductForm({ formData, handleInputChange, handleImageUp
             type="text"
             value={formData.name || ''}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="Ej: Laptop HP"
+            placeholder="Ej: ropa"
             required
           />
         </Form.Group>
