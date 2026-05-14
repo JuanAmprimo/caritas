@@ -7,7 +7,7 @@ import EditItemModal from './EditItemModal';
 import ItemForm from './ItemForm';
 import ItemTable from './ItemTable';
 
-export default function ListManager() {
+export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([
     { id: '1', name: 'nombre', type: 'text' },
     { id: '2', name: 'cantidad', type: 'number' },
@@ -61,6 +61,13 @@ export default function ListManager() {
     }
   };
 
+  // 🔹 Filtrar items según el searchTerm
+  const filteredItems = items.filter(item =>
+    Object.values(item).some(val =>
+      String(val).toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
+
   return (
     <Container fluid className="py-4">
       <Card className="shadow-sm border-0">
@@ -76,7 +83,11 @@ export default function ListManager() {
                 {fields.map(field => (
                   <FieldBadge key={field.id} field={field} removeField={removeField} />
                 ))}
-                <Button style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }} size="sm" onClick={() => setShowAddField(true)}>
+                <Button
+                  style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }}
+                  size="sm"
+                  onClick={() => setShowAddField(true)}
+                >
                   <Plus size={16} className="me-1" /> Agregar Campo
                 </Button>
               </div>
@@ -84,16 +95,41 @@ export default function ListManager() {
           </Row>
 
           {/* Formulario Items */}
-          <ItemForm fields={fields} newItem={newItem} setNewItem={setNewItem} addItem={addItem} />
+          <ItemForm
+            fields={fields}
+            newItem={newItem}
+            setNewItem={setNewItem}
+            addItem={addItem}
+          />
 
-          {/* Tabla Items */}
-          <ItemTable fields={fields} items={items} openEditItem={openEditItem} deleteItem={deleteItem} />
+          {/* Tabla Items filtrados */}
+          <ItemTable
+            fields={fields}
+            items={filteredItems}
+            openEditItem={openEditItem}
+            deleteItem={deleteItem}
+          />
         </Card.Body>
       </Card>
 
       {/* Modales */}
-      <AddFieldModal show={showAddField} setShow={setShowAddField} newFieldName={newFieldName} setNewFieldName={setNewFieldName} newFieldType={newFieldType} setNewFieldType={setNewFieldType} addField={addField} />
-      <EditItemModal show={showEditItem} setShow={setShowEditItem} fields={fields} editingItem={editingItem} setEditingItem={setEditingItem} saveEditItem={saveEditItem} />
+      <AddFieldModal
+        show={showAddField}
+        setShow={setShowAddField}
+        newFieldName={newFieldName}
+        setNewFieldName={setNewFieldName}
+        newFieldType={newFieldType}
+        setNewFieldType={setNewFieldType}
+        addField={addField}
+      />
+      <EditItemModal
+        show={showEditItem}
+        setShow={setShowEditItem}
+        fields={fields}
+        editingItem={editingItem}
+        setEditingItem={setEditingItem}
+        saveEditItem={saveEditItem}
+      />
     </Container>
   );
 }
