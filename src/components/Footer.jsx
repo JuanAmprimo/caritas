@@ -10,7 +10,7 @@ export default function Footer() {
           <Row className="align-items-center">
             <Col md={6} className="mb-3 mb-md-0">
               <p className="mb-0">
-                © 2026 Mi Tienda Premium. Todos los derechos reservados.
+                © 2026 Caritas. Todos los derechos reservados.
               </p>
             </Col>
 
@@ -18,7 +18,7 @@ export default function Footer() {
               <div className="d-flex flex-column flex-md-row justify-content-md-end align-items-start align-items-md-center gap-3">
                 <a href="#" className="text-white d-flex align-items-center gap-2">
                   <FaInstagram size={24} />
-                  <span>@mitienda</span>
+                  <span>@Caritas</span>
                 </a>
                 <div className="d-flex align-items-center gap-2">
                   <Phone size={18} />

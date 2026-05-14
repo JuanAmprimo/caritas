@@ -10,7 +10,20 @@ export default function NavbarShop({ activeTab, setActiveTab }) {
           className="fw-bold text-white d-flex align-items-center"
           style={{ fontSize: '1.5rem' }}
         >
-          <ShoppingCart size={32} className="me-2" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 30"
+            fill="white"
+          >
+            {/* Palito vertical */}
+            <rect x="10" y="4" width="4" height="30" />
+            
+            {/* Palito horizontal */}
+            <rect x="4" y="10" width="16" height="4" />
+          </svg>
+
           Caritas
         </Navbar.Brand>
 
@@ -58,7 +71,19 @@ export default function NavbarShop({ activeTab, setActiveTab }) {
               Calculadora
             </Nav.Link>
             <Nav.Link className="text-white position-relative">
-              <ShoppingCart size={24} />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 30"
+                    fill="white"
+                  >
+                    {/* Palito vertical */}
+                    <rect x="10" y="4" width="4" height="30" />
+                    
+                    {/* Palito horizontal */}
+                    <rect x="4" y="10" width="16" height="4" />
+                  </svg>
               <Badge
                 bg="danger"
                 className="position-absolute top-0 start-100 translate-middle rounded-pill"
