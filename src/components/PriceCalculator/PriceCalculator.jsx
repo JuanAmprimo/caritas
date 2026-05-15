@@ -8,10 +8,10 @@ export default function PriceCalculator() {
   const [formData, setFormData] = useState({
     name: '',
     price: 0,
-    stock: 0,
     quantity: 1,
     description: '',
     image: '',
+    size: '',
   });
   const [editingId, setEditingId] = useState(null);
 
