@@ -21,7 +21,7 @@ export default function AddFieldModal({
             type="text"
             value={newFieldName}
             onChange={(e) => setNewFieldName(e.target.value)}
-            placeholder="Ej: descripción, fecha, etc."
+            placeholder="Ej: descripción, nombre, fecha, etc."
           />
         </Form.Group>
         <Form.Group>
