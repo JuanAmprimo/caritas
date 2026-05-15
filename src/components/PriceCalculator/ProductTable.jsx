@@ -11,7 +11,7 @@ export default function ProductTable({ products, updateQuantity, calculateSubtot
             <th>Producto</th>
             <th>Descripción</th>
             <th>Precio Unit.</th>
-            <th>Stock</th>
+            <th>Talle</th>
             <th>Cantidad</th>
             <th>Subtotal</th>
             <th>Acciones</th>
@@ -21,7 +21,7 @@ export default function ProductTable({ products, updateQuantity, calculateSubtot
       {products.map(product => (
         <tr 
           key={product.id} 
-          data-name={`${product.name} ${product.description} ${product.price} ${product.stock}`.toLowerCase()}
+          data-name={`${product.name} ${product.description} ${product.price} ${product.size}`.toLowerCase()}
         >
           <td style={{ width: '80px' }}>
             {product.image ? (
@@ -43,7 +43,7 @@ export default function ProductTable({ products, updateQuantity, calculateSubtot
           <td>{product.name}</td>
           <td>{product.description || '-'}</td>
           <td>${product.price.toFixed(2)}</td>
-          <td>{product.stock}</td>
+          <td>{product.size}</td>
           <td style={{ width: '120px' }}>
             <Form.Control
               type="number"

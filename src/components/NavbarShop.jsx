@@ -1,5 +1,6 @@
 import { Container, Nav, Navbar, Form, Button, Badge } from 'react-bootstrap';
 import { Search, List, Calculator } from 'lucide-react';
+import CaritasLogo from '../assets/caritas-logo.png'; // Asegúrate de tener el logo en esta ruta
 
 export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSearchTerm }) {
 
@@ -22,14 +23,15 @@ export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSea
         <Navbar.Brand
           href="#"
           className="fw-bold text-white d-flex align-items-center"
-          style={{ fontSize: '1.5rem' }}
+          style={{ fontSize: '1.0rem' }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 30" fill="white">
-            <rect x="10" y="4" width="4" height="30" />
-            <rect x="4" y="10" width="16" height="4" />
-          </svg>
-          Caritas
+          <img
+            src={CaritasLogo}  // ruta de tu logo
+            style={{ width: '40px', height: '40px', marginRight: '10px' }}
+          />
+          Caritas, parroquia nuestra <br/> señora del carmen
         </Navbar.Brand>
+
 
         <Navbar.Toggle aria-controls="navbar-nav" className="border-white" />
 

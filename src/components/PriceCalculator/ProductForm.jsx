@@ -36,15 +36,16 @@ export default function ProductForm({ formData, handleInputChange, handleImageUp
 
       <Col md={6} lg={2} className="mb-3">
         <Form.Group>
-          <Form.Label>Stock Disponible</Form.Label>
+          <Form.Label>Talle</Form.Label>
           <Form.Control
-            type="number"
-            value={formData.stock || ''}
-            onChange={(e) => handleInputChange('stock', parseInt(e.target.value))}
-            placeholder="0"
+            type="text"
+            value={formData.size || ''}   // 🔹 nuevo campo "size"
+            onChange={(e) => handleInputChange('size', e.target.value)}
+            placeholder="Ej: M, L, XL"
           />
         </Form.Group>
       </Col>
+
 
       <Col md={6} lg={2} className="mb-3">
         <Form.Group>
