@@ -10,3 +10,14 @@ html, body {
   padding: 0;
   font-family: 'Inter', sans-serif;
 }
+
+.highlight {
+  animation: pulse 1.5s ease;
+  background-color: yellow !important; /* 🔹 fuerza el color inicial */
+}
+
+@keyframes pulse {
+  0% { background-color: yellow !important; }
+  50% { background-color: transparent !important; }
+  100% { background-color: yellow !important; }
+}

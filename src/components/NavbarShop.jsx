@@ -2,6 +2,20 @@ import { Container, Nav, Navbar, Form, Button, Badge } from 'react-bootstrap';
 import { Search, List, Calculator } from 'lucide-react';
 
 export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSearchTerm }) {
+
+  const handleSearch = (e) => {
+  e.preventDefault();
+  const found = document.querySelectorAll(`[data-name*="${searchTerm.toLowerCase()}"]`);
+  found.forEach(el => {
+    el.querySelectorAll("td").forEach(td => {
+      td.classList.add("highlight");
+      setTimeout(() => td.classList.remove("highlight"), 2000);
+    });
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+};
+
+
   return (
     <Navbar expand="lg" className="shadow-sm" style={{ backgroundColor: '#6366f1' }}>
       <Container fluid>
@@ -21,16 +35,24 @@ export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSea
 
         <Navbar.Collapse id="navbar-nav">
           {/* Buscador */}
-          <Form className="d-flex mx-auto my-2 my-lg-0" style={{ maxWidth: '500px', width: '100%' }}>
+          <Form 
+            className="d-flex mx-auto my-2 my-lg-0" 
+            style={{ maxWidth: '500px', width: '100%' }}
+            onSubmit={handleSearch} // 🔹 evita reload y busca
+          >
             <Form.Control
               type="search"
-              placeholder="Buscar persona..."
+              placeholder="Buscar donación..." // 🔹 nuevo placeholder
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="me-2"
               style={{ borderRadius: '25px' }}
             />
-            <Button variant="light" style={{ borderRadius: '25px', minWidth: '100px' }}>
+            <Button 
+              variant="light" 
+              style={{ borderRadius: '25px', minWidth: '100px' }}
+              type="submit"
+            >
               <Search size={18} className="me-1" />
               Buscar
             </Button>
@@ -51,19 +73,6 @@ export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSea
             >
               <Calculator size={20} className="me-1" />
               Calculadora
-            </Nav.Link>
-            <Nav.Link className="text-white position-relative">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 30" fill="white">
-                <rect x="10" y="4" width="4" height="30" />
-                <rect x="4" y="10" width="16" height="4" />
-              </svg>
-              <Badge
-                bg="danger"
-                className="position-absolute top-0 start-100 translate-middle rounded-pill"
-                style={{ fontSize: '0.65rem' }}
-              >
-                
-              </Badge>
             </Nav.Link>
           </Nav>
         </Navbar.Collapse>

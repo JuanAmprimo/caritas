@@ -133,10 +133,11 @@ export default function ListManager({ searchTerm }) {
             >
               <ItemTable
                 fields={fields}
-                items={filteredItems}
+                items={items} // 🔹 todos los items, no solo filtrados
                 openEditItem={openEditItem}
                 deleteItem={deleteItem}
               />
+
             </div>
         </Card.Body>
       </Card>

@@ -4,7 +4,6 @@ import { Edit2, Trash2 } from 'lucide-react';
 export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
   return (
     <div>
-      {/* Encabezado sin botón */}
       <h5 className="mb-3">Items de la Lista</h5>
 
       {items.length === 0 ? (
@@ -22,7 +21,10 @@ export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
             </thead>
             <tbody>
               {items.map(item => (
-                <tr key={item.id}>
+                <tr 
+                    key={item.id} 
+                    data-name={Object.values(item).join(" ").toLowerCase()} // todos los campos concatenados
+                  >
                   {fields.map(field => (
                     <td key={field.id}>{item[field.name] || '-'}</td>
                   ))}
