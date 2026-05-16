@@ -105,15 +105,23 @@ export default function ListManager({ searchTerm }) {
     setNewItem({});
   };
 
-  const deleteItem = (id) => setItems(items.filter(item => item.id !== id));
+  const deleteItem = (id) => {
+  const updatedItems = items.filter(item => item.id !== id);
+  setItems(updatedItems);
+  updateList(); // 🔹 guardar cambios en Mongo
+  };
+
   const openEditItem = (item) => { setEditingItem(item); setShowEditItem(true); };
   const saveEditItem = () => {
-    if (editingItem) {
-      setItems(items.map(item => item.id === editingItem.id ? editingItem : item));
-      setShowEditItem(false);
-      setEditingItem(null);
-    }
-  };
+  if (editingItem) {
+    const updatedItems = items.map(item => item.id === editingItem.id ? editingItem : item);
+    setItems(updatedItems);
+    setShowEditItem(false);
+    setEditingItem(null);
+    updateList(); // 🔹 guardar cambios en Mongo
+  }
+};
+
 
   const filteredItems = items.filter(item =>
     Object.values(item).some(val =>
@@ -121,13 +129,36 @@ export default function ListManager({ searchTerm }) {
     )
   );
 
- const loadList = (list) => {
-  setFields(list.fields || []);   // 🔹 usar los campos guardados
-  setItems(list.items || []);     // 🔹 usar los ítems guardados
-  setListTitle(list.title);       // 🔹 mostrar el nombre
+  const loadList = async (list) => {
+  try {
+    const res = await fetch(`http://localhost:3001/api/lists/${list._id}`);
+    const data = await res.json();
+    setFields(data.fields || []);
+    setItems(data.items || []);
+    setListTitle(data.title);
+  } catch (err) {
+    console.error("Error al cargar lista:", err);
+  }
 };
 
+  const updateList = async () => {
+  try {
+    const currentList = lists.find(l => l.title === listTitle);
+    if (!currentList) return;
 
+    const res = await fetch(`http://localhost:3001/api/lists/${currentList._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: listTitle, userId: "12345", fields, items })
+    });
+    const data = await res.json();
+
+    // 🔹 actualizar estado con la lista modificada
+    setLists(lists.map(l => l._id === currentList._id ? data : l));
+  } catch (err) {
+    console.error("Error al actualizar lista:", err);
+  }
+};
 
 
   return (

@@ -29,6 +29,16 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Obtener lista por id
+router.get("/:id", async (req, res) => {
+  try {
+    const list = await List.findById(req.params.id);
+    res.json(list);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Actualizar lista
 router.put("/:id", async (req, res) => {
   try {
