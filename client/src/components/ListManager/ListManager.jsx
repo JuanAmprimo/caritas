@@ -10,14 +10,14 @@ import ItemTable from './ItemTable';
 export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
   const [items, setItems] = useState([]);
-  const [lists, setLists] = useState([]); // 🔹 listas persistentes
+  const [lists, setLists] = useState([]);
+  const [listTitle, setListTitle] = useState(''); // 🔹 nombre de la lista
   const [showAddField, setShowAddField] = useState(false);
   const [showEditItem, setShowEditItem] = useState(false);
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('text');
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({});
-  const [scrollMode, setScrollMode] = useState(false);
 
   // 🔹 Traer listas desde MongoDB
   useEffect(() => {
@@ -52,21 +52,29 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  // 🔹 Crear lista en MongoDB
-  const saveList = async () => {
-    try {
-      const res = await fetch("http://localhost:3001/api/lists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Mi Lista", userId: "12345", donations: items })
-      });
-      const data = await res.json();
-      setLists([...lists, data]);
-      setItems([]); // limpiar items después de guardar
-    } catch (err) {
-      console.error("Error al guardar lista:", err);
-    }
-  };
+  // 🔹 Guardar lista en MongoDB con nombre
+    const saveList = async () => {
+      if (!listTitle.trim()) {
+        alert("Debes poner un nombre a la lista antes de guardarla.");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3001/api/lists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: listTitle, userId: "12345", fields, items })
+        });
+        const data = await res.json();
+        console.log("Respuesta del backend:", data);
+        setLists([...lists, data]);
+        // ❌ no borres items, fields ni title
+      } catch (err) {
+        console.error("Error al guardar lista:", err);
+      }
+    };
+
+
 
   const deleteList = async (id) => {
     try {
@@ -82,13 +90,16 @@ export default function ListManager({ searchTerm }) {
       alert("Primero debes agregar campos a la lista antes de añadir un item.");
       return;
     }
+
     const missingFields = fields.filter(
       f => !newItem[f.name] || newItem[f.name].toString().trim() === ""
     );
+
     if (missingFields.length > 0) {
       alert(`Completa todos los campos antes de agregar el item. Faltan: ${missingFields.map(f => f.name).join(", ")}`);
       return;
     }
+
     const item = { id: Date.now().toString(), ...newItem };
     setItems([...items, item]);
     setNewItem({});
@@ -109,6 +120,15 @@ export default function ListManager({ searchTerm }) {
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
+
+ const loadList = (list) => {
+  setFields(list.fields || []);   // 🔹 usar los campos guardados
+  setItems(list.items || []);     // 🔹 usar los ítems guardados
+  setListTitle(list.title);       // 🔹 mostrar el nombre
+};
+
+
+
 
   return (
     <Container fluid className="py-4">
@@ -161,13 +181,27 @@ export default function ListManager({ searchTerm }) {
             />
           </div>
 
+          {/* Nombre de la lista */}
+          <Row className="mb-3">
+            <Col>
+              <label>Nombre de la Lista:</label>
+              <input
+                type="text"
+                className="form-control"
+                value={listTitle}
+                onChange={(e) => setListTitle(e.target.value)}
+                placeholder="Ej: Lista de ropa"
+              />
+            </Col>
+          </Row>
+
           {/* Guardar lista */}
           <Button
             style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
             className="mt-3"
             onClick={saveList}
           >
-            Guardar Lista en MongoDB
+            Guardar Lista
           </Button>
         </Card.Body>
       </Card>
@@ -178,7 +212,12 @@ export default function ListManager({ searchTerm }) {
         <Card.Body>
           {lists.map(list => (
             <div key={list._id} className="d-flex justify-content-between align-items-center mb-2">
-              <span>{list.title}</span>
+              <span
+                style={{ cursor: "pointer", fontWeight: "bold" }}
+                onClick={() => loadList(list)} // 🔹 carga la lista al hacer click
+              >
+                {list.title}
+              </span>
               <Button
                 size="sm"
                 style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}

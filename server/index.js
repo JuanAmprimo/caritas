@@ -4,6 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import listRoutes from "./routes/lists.js";
 import donationRoutes from "./routes/donations.js";
+import itemRoutes from "./routes/items.js";
+
 
 dotenv.config();
 const app = express();
@@ -19,6 +21,7 @@ mongoose.connect(process.env.MONGO_URI)
 // Rutas
 app.use("/api/lists", listRoutes);
 app.use("/api/donations", donationRoutes);
+app.use("/api/items", itemRoutes);
 
 // Ruta de prueba
 app.get("/", (req, res) => {

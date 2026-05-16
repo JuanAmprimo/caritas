@@ -3,38 +3,43 @@ import List from "../models/List.js";
 
 const router = express.Router();
 
-// Obtener todas las listas de un usuario
-router.get("/", async (req, res) => {
-  try {
-    const lists = await List.find({ userId: req.query.userId });
-    res.json(lists);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Crear nueva lista
+// Crear lista
 router.post("/", async (req, res) => {
   try {
-    const newList = new List(req.body);
+    console.log("Datos recibidos:", req.body); // 👀 verificar que llega title
+    const { title, userId, fields, items } = req.body;
+    const newList = new List({ title, userId, fields, items });
     await newList.save();
+    console.log("Lista guardada:", newList); // 👀 confirmar que se guardó con title
     res.json(newList);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Actualizar lista por ID
-router.put("/:id", async (req, res) => {
+
+// Obtener listas por usuario
+router.get("/", async (req, res) => {
   try {
-    const updatedList = await List.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updatedList);
+    const { userId } = req.query;
+    const lists = await List.find({ userId });
+    res.json(lists);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Eliminar lista por ID
+// Actualizar lista
+router.put("/:id", async (req, res) => {
+  try {
+    const updated = await List.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Eliminar lista
 router.delete("/:id", async (req, res) => {
   try {
     await List.findByIdAndDelete(req.params.id);
