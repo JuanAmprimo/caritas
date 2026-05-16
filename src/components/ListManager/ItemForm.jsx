@@ -24,7 +24,7 @@ export default function ItemForm({ fields, newItem, setNewItem, addItem }) {
           ))}
           <Col xs={12}>
             <p className="text-muted small mb-2">
-              Una vez añadido los items toca el botón verde de abajo
+              Una vez añadido los campos toca el botón verde de abajo
             </p>
             <Button
               style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
