@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Container, Card, Form } from 'react-bootstrap';
+import { Container, Card } from 'react-bootstrap';
 import DonationForm from './DonationForm';
 import DonationTable from './DonationTable';
 
-export default function PriceCalculator() {
+export default function PriceCalculator({ searchTerm }) {
   const [donations, setDonations] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -14,22 +14,20 @@ export default function PriceCalculator() {
     size: '',
   });
   const [editingId, setEditingId] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
 
   // 🔹 Traer donaciones del backend al cargar
   useEffect(() => {
-  const fetchDonations = async () => {
-    try {
-      const res = await fetch("http://localhost:3001/api/donations?userId=12345");
-      const data = await res.json();
-      setDonations(data); // 🔹 llena la tabla con lo que está en MongoDB
-    } catch (err) {
-      console.error("Error al traer donaciones:", err);
-    }
-  };
-
-  fetchDonations();
-}, []);
+    const fetchDonations = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/donations?userId=12345");
+        const data = await res.json();
+        setDonations(data);
+      } catch (err) {
+        console.error("Error al traer donaciones:", err);
+      }
+    };
+    fetchDonations();
+  }, []);
 
   const handleInputChange = (field, value) => setFormData({ ...formData, [field]: value });
 
@@ -42,54 +40,48 @@ export default function PriceCalculator() {
     }
   };
 
-  // 🔹 Crear o actualizar donación en backend
+  // 🔹 Crear o actualizar donación
   const addOrUpdateDonation = async () => {
-  if (!formData.name || !formData.price) {
-    alert("Por favor completa el nombre y precio de la donación");
-    return;
-  }
-
-  try {
-    if (editingId) {
-      // 🔹 Actualizar donación en backend
-      const res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-      });
-      const data = await res.json();
-      setDonations(donations.map(d => d._id === editingId ? data : d));
-      setEditingId(null);
-    } else {
-      // 🔹 Crear donación en backend
-      const res = await fetch("http://localhost:3001/api/donations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, userId: "12345" })
-      });
-      const data = await res.json();
-      setDonations([...donations, data]);
+    if (!formData.name || !formData.price) {
+      alert("Por favor completa el nombre y precio de la donación");
+      return;
     }
 
-    // Resetear formulario
-    setFormData({ name:'', price:0, quantity:1, description:'', image:'', size:'' });
-  } catch (err) {
-    console.error("Error al guardar donación:", err);
-  }
-};
+    try {
+      if (editingId) {
+        const res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        setDonations(donations.map(d => d._id === editingId ? data : d));
+        setEditingId(null);
+      } else {
+        const res = await fetch("http://localhost:3001/api/donations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...formData, userId: "12345" })
+        });
+        const data = await res.json();
+        setDonations([...donations, data]);
+      }
 
+      setFormData({ name:'', price:0, quantity:1, description:'', image:'', size:'' });
+    } catch (err) {
+      console.error("Error al guardar donación:", err);
+    }
+  };
 
   const editDonation = (donation) => { setFormData(donation); setEditingId(donation._id); };
   const deleteDonation = async (id) => {
-  try {
-    await fetch(`http://localhost:3001/api/donations/${id}`, { method: "DELETE" });
-    setDonations(donations.filter(d => d._id !== id));
-  } catch (err) {
-    console.error("Error al eliminar donación:", err);
-  }
-};
-
-
+    try {
+      await fetch(`http://localhost:3001/api/donations/${id}`, { method: "DELETE" });
+      setDonations(donations.filter(d => d._id !== id));
+    } catch (err) {
+      console.error("Error al eliminar donación:", err);
+    }
+  };
 
   const updateQuantity = (id, quantity) => {
     if (quantity < 0) return;
@@ -103,18 +95,12 @@ export default function PriceCalculator() {
     setFormData({ name: '', price: 0, quantity: 1, description: '', image: '', size: '' });
   };
 
-  // 🔹 Buscador con resaltado amarillo y animación
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const found = document.querySelectorAll(
-      `[data-name*="${searchTerm.toLowerCase()}"]`
-    );
-    found.forEach(el => {
-      el.classList.add("highlight");
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => el.classList.remove("highlight"), 2000);
-    });
-  };
+  // 🔹 Filtrar donaciones usando el searchTerm del Navbar
+  const filteredDonations = donations.filter(d =>
+    Object.values(d).some(val =>
+      String(val || "").toLowerCase().includes((searchTerm || "").toLowerCase())
+    )
+  );
 
   return (
     <Container fluid className="py-4">
@@ -136,34 +122,25 @@ export default function PriceCalculator() {
         </Card.Body>
       </Card>
 
-      {/* Tabla + Buscador */}
+      {/* Tabla */}
       <Card className="shadow-sm border-0">
         <Card.Header style={{ backgroundColor: '#6366f1' }} className="text-white">
           <h4 className="mb-0">🛒 Lista de Donaciones y Cálculo Final</h4>
         </Card.Header>
         <Card.Body>
-          <Form onSubmit={handleSearch} className="mb-3">
-            <Form.Control
-              type="text"
-              placeholder="Buscar donación..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </Form>
-
-          {donations.length === 0 ? (
-            <p className="text-muted">No hay donaciones agregadas. Agrega una arriba para comenzar.</p>
+          {filteredDonations.length === 0 ? (
+            <p className="text-muted">No hay donaciones que coincidan con la búsqueda.</p>
           ) : (
             <div
               style={{
-                maxHeight: donations.length > 3 ? "300px" : "none",
-                overflowY: donations.length > 3 ? "auto" : "visible",
-                border: donations.length > 3 ? "1px solid #ccc" : "none",
-                padding: donations.length > 3 ? "10px" : "0",
+                maxHeight: filteredDonations.length > 3 ? "300px" : "none",
+                overflowY: filteredDonations.length > 3 ? "auto" : "visible",
+                border: filteredDonations.length > 3 ? "1px solid #ccc" : "none",
+                padding: filteredDonations.length > 3 ? "10px" : "0",
               }}
             >
               <DonationTable
-                donations={donations}
+                donations={filteredDonations}
                 updateQuantity={updateQuantity}
                 calculateSubtotal={calculateSubtotal}
                 calculateTotal={calculateTotal}
