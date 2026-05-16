@@ -18,11 +18,18 @@ export default function PriceCalculator() {
 
   // 🔹 Traer donaciones del backend al cargar
   useEffect(() => {
-    fetch("http://localhost:3001/api/donations?userId=12345")
-      .then(res => res.json())
-      .then(data => setDonations(data))
-      .catch(err => console.error("Error al traer donaciones:", err));
-  }, []);
+  const fetchDonations = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/donations?userId=12345");
+      const data = await res.json();
+      setDonations(data); // 🔹 llena la tabla con lo que está en MongoDB
+    } catch (err) {
+      console.error("Error al traer donaciones:", err);
+    }
+  };
+
+  fetchDonations();
+}, []);
 
   const handleInputChange = (field, value) => setFormData({ ...formData, [field]: value });
 
@@ -37,47 +44,51 @@ export default function PriceCalculator() {
 
   // 🔹 Crear o actualizar donación en backend
   const addOrUpdateDonation = async () => {
-    if (!formData.name || !formData.price) {
-      alert("Por favor completa el nombre y precio de la donación");
-      return;
+  if (!formData.name || !formData.price) {
+    alert("Por favor completa el nombre y precio de la donación");
+    return;
+  }
+
+  try {
+    if (editingId) {
+      // 🔹 Actualizar donación en backend
+      const res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      setDonations(donations.map(d => d._id === editingId ? data : d));
+      setEditingId(null);
+    } else {
+      // 🔹 Crear donación en backend
+      const res = await fetch("http://localhost:3001/api/donations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, userId: "12345" })
+      });
+      const data = await res.json();
+      setDonations([...donations, data]);
     }
 
-    try {
-      if (editingId) {
-        const res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData)
-        });
-        const data = await res.json();
-        setDonations(donations.map(d => d._id === editingId ? data : d));
-        setEditingId(null);
-      } else {
-        const res = await fetch("http://localhost:3001/api/donations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...formData, userId: "12345" })
-        });
-        const data = await res.json();
-        setDonations([...donations, data]);
-      }
+    // Resetear formulario
+    setFormData({ name:'', price:0, quantity:1, description:'', image:'', size:'' });
+  } catch (err) {
+    console.error("Error al guardar donación:", err);
+  }
+};
 
-      setFormData({ name:'', price:0, quantity:1, description:'', image:'', size:'' });
-    } catch (err) {
-      console.error("Error al guardar donación:", err);
-    }
-  };
 
   const editDonation = (donation) => { setFormData(donation); setEditingId(donation._id); };
   const deleteDonation = async (id) => {
   try {
     await fetch(`http://localhost:3001/api/donations/${id}`, { method: "DELETE" });
-    // 🔹 Usar _id en la comparación
     setDonations(donations.filter(d => d._id !== id));
   } catch (err) {
     console.error("Error al eliminar donación:", err);
   }
 };
+
 
 
   const updateQuantity = (id, quantity) => {
