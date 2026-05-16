@@ -5,11 +5,9 @@ import dotenv from "dotenv";
 import listRoutes from "./routes/lists.js";
 import donationRoutes from "./routes/donations.js";
 
-dotenv.config(); // primero cargamos variables de entorno
+dotenv.config();
+const app = express();
 
-const app = express(); // inicializamos express
-
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
@@ -27,5 +25,4 @@ app.get("/", (req, res) => {
   res.send("Servidor funcionando 🚀");
 });
 
-// Arrancar servidor
 app.listen(3001, () => console.log("Servidor en http://localhost:3001"));
