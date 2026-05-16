@@ -3,8 +3,9 @@ import mongoose from "mongoose";
 const ListSchema = new mongoose.Schema({
   title: String,
   createdAt: { type: Date, default: Date.now },
-  products: [{
-    productId: String,
+  userId: String, // cada lista pertenece a un usuario
+  donations: [{
+    donationId: String,
     name: String,
     quantity: Number,
     extraFields: Object

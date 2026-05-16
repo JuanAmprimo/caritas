@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Container, Card } from 'react-bootstrap';
+import { Container, Card, Form } from 'react-bootstrap';
 import DonationForm from './DonationForm';
 import DonationTable from './DonationTable';
 
 export default function PriceCalculator() {
-  const [products, setProducts] = useState([]);
+  const [donations, setDonations] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     price: 0,
@@ -14,6 +14,7 @@ export default function PriceCalculator() {
     size: '',
   });
   const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleInputChange = (field, value) => setFormData({ ...formData, [field]: value });
 
@@ -26,33 +27,46 @@ export default function PriceCalculator() {
     }
   };
 
-  const addOrUpdateProduct = () => {
+  const addOrUpdateDonation = () => {
     if (!formData.name || !formData.price) {
-      alert('Por favor completa el nombre y precio del producto');
+      alert('Por favor completa el nombre y precio de la donación');
       return;
     }
     if (editingId) {
-      setProducts(products.map(p => p.id === editingId ? { ...p, ...formData } : p));
+      setDonations(donations.map(d => d.id === editingId ? { ...d, ...formData } : d));
       setEditingId(null);
     } else {
-      const newProduct = { id: Date.now().toString(), ...formData };
-      setProducts([...products, newProduct]);
+      const newDonation = { id: Date.now().toString(), ...formData };
+      setDonations([...donations, newDonation]);
     }
-    setFormData({ name: '', price: 0, stock: 0, quantity: 1, description: '', image: '' });
+    setFormData({ name: '', price: 0, quantity: 1, description: '', image: '', size: '' });
   };
 
-  const editProduct = (product) => { setFormData(product); setEditingId(product.id); };
-  const deleteProduct = (id) => setProducts(products.filter(p => p.id !== id));
+  const editDonation = (donation) => { setFormData(donation); setEditingId(donation.id); };
+  const deleteDonation = (id) => setDonations(donations.filter(d => d.id !== id));
   const updateQuantity = (id, quantity) => {
     if (quantity < 0) return;
-    setProducts(products.map(p => p.id === id ? { ...p, quantity: Math.min(quantity, p.stock) } : p));
+    setDonations(donations.map(d => d.id === id ? { ...d, quantity } : d));
   };
 
-  const calculateTotal = () => products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
-  const calculateSubtotal = (p) => p.price * p.quantity;
+  const calculateTotal = () => donations.reduce((sum, d) => sum + (d.price * d.quantity), 0);
+  const calculateSubtotal = (d) => d.price * d.quantity;
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ name: '', price: 0, stock: 0, quantity: 1, description: '', image: '' });
+    setFormData({ name: '', price: 0, quantity: 1, description: '', image: '', size: '' });
+  };
+
+  // 🔹 Buscador con resaltado amarillo y animación
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const found = document.querySelectorAll(
+      `[data-name*="${searchTerm.toLowerCase()}"]`
+    );
+    found.forEach(el => {
+      el.classList.add("highlight");
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => el.classList.remove("highlight"), 2000);
+    });
   };
 
   return (
@@ -68,42 +82,50 @@ export default function PriceCalculator() {
             formData={formData}
             handleInputChange={handleInputChange}
             handleImageUpload={handleImageUpload}
-            addOrUpdateProduct={addOrUpdateProduct}
+            addOrUpdateDonation={addOrUpdateDonation}
             cancelEdit={cancelEdit}
             editingId={editingId}
           />
         </Card.Body>
       </Card>
 
-      {/* Tabla */}
+      {/* Tabla + Buscador */}
       <Card className="shadow-sm border-0">
         <Card.Header style={{ backgroundColor: '#6366f1' }} className="text-white">
-          <h4 className="mb-0">🛒 Lista de Productos y Cálculo Final</h4>
+          <h4 className="mb-0">🛒 Lista de Donaciones y Cálculo Final</h4>
         </Card.Header>
-          <Card.Body>
-            {products.length === 0 ? (
-              <p className="text-muted">No hay productos agregados. Agrega uno arriba para comenzar.</p>
-            ) : (
-              <div
-                style={{
-                  maxHeight: products.length > 3 ? "300px" : "none",
-                  overflowY: products.length > 3 ? "auto" : "visible",
-                  border: products.length > 3 ? "1px solid #ccc" : "none",
-                  padding: products.length > 3 ? "10px" : "0",
-                }}
-              >
-                <DonationTable
-                  products={products}
-                  updateQuantity={updateQuantity}
-                  calculateSubtotal={calculateSubtotal}
-                  calculateTotal={calculateTotal}
-                  editProduct={editProduct}
-                  deleteProduct={deleteProduct}
-                />
+        <Card.Body>
+          <Form onSubmit={handleSearch} className="mb-3">
+            <Form.Control
+              type="text"
+              placeholder="Buscar donación..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </Form>
+
+          {donations.length === 0 ? (
+            <p className="text-muted">No hay donaciones agregadas. Agrega una arriba para comenzar.</p>
+          ) : (
+            <div
+              style={{
+                maxHeight: donations.length > 3 ? "300px" : "none",
+                overflowY: donations.length > 3 ? "auto" : "visible",
+                border: donations.length > 3 ? "1px solid #ccc" : "none",
+                padding: donations.length > 3 ? "10px" : "0",
+              }}
+            >
+              <DonationTable
+                donations={donations}
+                updateQuantity={updateQuantity}
+                calculateSubtotal={calculateSubtotal}
+                calculateTotal={calculateTotal}
+                editDonation={editDonation}
+                deleteDonation={deleteDonation}
+              />
             </div>
           )}
         </Card.Body>
-
       </Card>
     </Container>
   );
