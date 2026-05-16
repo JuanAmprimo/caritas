@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Card, Row, Col, Button } from 'react-bootstrap';
 import { Plus } from 'lucide-react';
 import FieldBadge from './FieldBadge';
@@ -10,13 +10,22 @@ import ItemTable from './ItemTable';
 export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
   const [items, setItems] = useState([]);
+  const [lists, setLists] = useState([]); // 🔹 listas persistentes
   const [showAddField, setShowAddField] = useState(false);
   const [showEditItem, setShowEditItem] = useState(false);
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState('text');
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({});
-  const [scrollMode, setScrollMode] = useState(false); // 🔹 estado para alternar vista
+  const [scrollMode, setScrollMode] = useState(false);
+
+  // 🔹 Traer listas desde MongoDB
+  useEffect(() => {
+    fetch("http://localhost:3001/api/lists?userId=12345")
+      .then(res => res.json())
+      .then(data => setLists(data))
+      .catch(err => console.error("Error al traer listas:", err));
+  }, []);
 
   const addField = () => {
     if (newFieldName.trim()) {
@@ -42,34 +51,48 @@ export default function ListManager({ searchTerm }) {
       setItems(updatedItems);
     }
   };
-    // funcion añadir item con validaciones
-    const addItem = () => {
-    // 1. Validar que existan campos
+
+  // 🔹 Crear lista en MongoDB
+  const saveList = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Mi Lista", userId: "12345", donations: items })
+      });
+      const data = await res.json();
+      setLists([...lists, data]);
+      setItems([]); // limpiar items después de guardar
+    } catch (err) {
+      console.error("Error al guardar lista:", err);
+    }
+  };
+
+  const deleteList = async (id) => {
+    try {
+      await fetch(`http://localhost:3001/api/lists/${id}`, { method: "DELETE" });
+      setLists(lists.filter(l => l._id !== id));
+    } catch (err) {
+      console.error("Error al eliminar lista:", err);
+    }
+  };
+
+  const addItem = () => {
     if (fields.length === 0) {
       alert("Primero debes agregar campos a la lista antes de añadir un item.");
       return;
     }
-
-    // 2. Validar que todos los campos tengan valor
     const missingFields = fields.filter(
       f => !newItem[f.name] || newItem[f.name].toString().trim() === ""
     );
-
     if (missingFields.length > 0) {
-      alert(
-        `Completa todos los campos antes de agregar el item. Faltan: ${missingFields
-          .map(f => f.name)
-          .join(", ")}`
-      );
+      alert(`Completa todos los campos antes de agregar el item. Faltan: ${missingFields.map(f => f.name).join(", ")}`);
       return;
     }
-
-    // 3. Si pasa las validaciones, agregar el item
     const item = { id: Date.now().toString(), ...newItem };
     setItems([...items, item]);
     setNewItem({});
   };
-
 
   const deleteItem = (id) => setItems(items.filter(item => item.id !== id));
   const openEditItem = (item) => { setEditingItem(item); setShowEditItem(true); };
@@ -81,7 +104,6 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  // 🔹 Filtrar items según el searchTerm
   const filteredItems = items.filter(item =>
     Object.values(item).some(val =>
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
@@ -122,23 +144,50 @@ export default function ListManager({ searchTerm }) {
             addItem={addItem}
           />
 
-          {/* Tabla Items siempre en bloque con scroll */}
-            <div
-              style={{
-                height:"150px",
-                overflowY: filteredItems.length > 0 ? "scroll" : "visible",
-                border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
-                padding: filteredItems.length > 0 ? "10px" : "0",
-              }}
-            >
-              <ItemTable
-                fields={fields}
-                items={items} // 🔹 todos los items, no solo filtrados
-                openEditItem={openEditItem}
-                deleteItem={deleteItem}
-              />
+          {/* Tabla Items */}
+          <div
+            style={{
+              height:"150px",
+              overflowY: filteredItems.length > 0 ? "scroll" : "visible",
+              border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
+              padding: filteredItems.length > 0 ? "10px" : "0",
+            }}
+          >
+            <ItemTable
+              fields={fields}
+              items={items}
+              openEditItem={openEditItem}
+              deleteItem={deleteItem}
+            />
+          </div>
 
+          {/* Guardar lista */}
+          <Button
+            style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+            className="mt-3"
+            onClick={saveList}
+          >
+            Guardar Lista en MongoDB
+          </Button>
+        </Card.Body>
+      </Card>
+
+      {/* Mostrar listas guardadas */}
+      <Card className="mt-4">
+        <Card.Header>Listas Guardadas</Card.Header>
+        <Card.Body>
+          {lists.map(list => (
+            <div key={list._id} className="d-flex justify-content-between align-items-center mb-2">
+              <span>{list.title}</span>
+              <Button
+                size="sm"
+                style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
+                onClick={() => deleteList(list._id)}
+              >
+                Eliminar
+              </Button>
             </div>
+          ))}
         </Card.Body>
       </Card>
 
