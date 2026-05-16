@@ -57,7 +57,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
               <td style={{ width: '120px' }}>
                 <Button
                   size="sm"
-                  className="me-1"
+                  className="me-1 list-button fw-semibold"
                   style={{ backgroundColor: '#f59e0b', borderColor: '#f59e0b' }}
                   onClick={() => editDonation(donation)}
                 >
@@ -65,6 +65,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
                 </Button>
                 <Button
                   size="sm"
+                  className="list-button fw-semibold"
                   style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
                   onClick={() => deleteDonation(donation._id)}
                 >

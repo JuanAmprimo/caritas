@@ -1,9 +1,9 @@
 import { Container, Nav, Navbar, Form, Button } from 'react-bootstrap';
-import { Search, List, Calculator, User } from 'lucide-react'; 
+import { Search, List, Calculator, User } from 'lucide-react';
 import CaritasLogo from '../assets/caritas-logo.png'; 
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
-export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSearchTerm }) {
+export default function NavbarShop({ searchTerm, setSearchTerm }) {
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -62,23 +62,30 @@ export default function NavbarShop({ activeTab, setActiveTab, searchTerm, setSea
 
           {/* Navegación */}
           <Nav className="ms-auto">
-            
-            <Nav.Link as={Link} to="/lists" className="text-white fw-semibold mx-2">
+            <Nav.Link
+              as={NavLink}
+              to="/lists"
+              className="text-white fw-semibold mx-2 nav-link-custom"
+            >
               <List size={20} className="me-1" />
               Gestión de Listas
             </Nav.Link>
-
-            <Nav.Link as={Link} to="/calculator" className="text-white fw-semibold mx-2">
+            <Nav.Link
+              as={NavLink}
+              to="/calculator"
+              className="text-white fw-semibold mx-2 nav-link-custom"
+            >
               <Calculator size={20} className="me-1" />
               Calculadora
             </Nav.Link>
-
-            {/* Ícono de usuario (Login/Register) */}
-            <Nav.Link as={Link} to="/login" className="text-white fw-semibold mx-2">
+            <Nav.Link
+              as={NavLink}
+              to="/login"
+              className="text-white fw-semibold mx-2 nav-link-custom"
+            >
               <User size={22} className="me-1" />
               Ingresar
             </Nav.Link>
-
           </Nav>
         </Navbar.Collapse>
       </Container>

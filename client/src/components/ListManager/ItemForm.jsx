@@ -27,6 +27,7 @@ export default function ItemForm({ fields, newItem, setNewItem, addItem }) {
               Una vez añadido los campos toca el botón verde de abajo
             </p>
             <Button
+              className='list-button fw-semibold'
               style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
               onClick={addItem}
             >

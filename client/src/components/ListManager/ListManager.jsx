@@ -177,6 +177,7 @@ export default function ListManager({ searchTerm }) {
                   <FieldBadge key={field.id} field={field} removeField={removeField} />
                 ))}
                 <Button
+                  className='list-button fw-semibold'
                   style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }}
                   size="sm"
                   onClick={() => setShowAddField(true)}
@@ -228,8 +229,8 @@ export default function ListManager({ searchTerm }) {
 
           {/* Guardar lista */}
           <Button
+            className='list-button fw-semibold mt-3'
             style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
-            className="mt-3"
             onClick={saveList}
           >
             Guardar Lista
@@ -250,6 +251,7 @@ export default function ListManager({ searchTerm }) {
                 {list.title}
               </span>
               <Button
+                className='list-button fw-semibold'
                 size="sm"
                 style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
                 onClick={() => deleteList(list._id)}

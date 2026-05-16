@@ -31,3 +31,36 @@
   font-weight: var(--font-weight-medium);
   font-size: 1.2rem;
 }
+
+.nav-link-custom {
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.nav-link-custom:hover {
+  color: #facc15 !important; /* amarillo al hover */
+}
+
+.nav-link-custom.active {
+  border-bottom: 3px solid #facc15; /* línea amarilla */
+}
+
+.nav-link-custom {
+  position: relative;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav-link-custom:hover {
+  transform: scale(1.1); /* 🔹 se agranda un 10% */
+  color: #facc15 !important; /* opcional: cambia color */
+}
+
+.list-button {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.list-button:hover {
+  transform: scale(1.05); /* 🔹 se agranda un 5% */
+  background-color: #facc15; /* opcional: cambia color al hover */
+  color: #000; /* opcional: cambia texto */
+}

@@ -86,13 +86,13 @@ export default function DonationForm({ formData, handleInputChange, handleImageU
         <Button
           style={{ backgroundColor: editingId ? '#f59e0b' : '#10b981', borderColor: editingId ? '#f59e0b' : '#10b981' }}
           onClick={addOrUpdateDonation}
-          className="me-2"
+          className="me-2 list-button fw-semibold"
         >
           <Plus size={16} className="me-1" />
           {editingId ? 'Actualizar Donación' : 'Agregar Donación'}
         </Button>
         {editingId && (
-          <Button variant="secondary" onClick={cancelEdit}>
+          <Button variant="secondary" onClick={cancelEdit} className="list-button fw-semibold">
             Cancelar
           </Button>
         )}
