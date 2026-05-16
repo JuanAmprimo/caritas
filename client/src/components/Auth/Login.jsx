@@ -67,7 +67,7 @@ export default function Login() {
               <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
             </Form.Group>
 
-            <Button type="submit" className="w-100 fw-semibold" style={{ backgroundColor: "#10b981", border: "none" }}>
+            <Button type="submit" className="w-100 fw-semibold list-button" style={{ backgroundColor: "#10b981", border: "none" }}>
               Ingresar
             </Button>
           </Form>

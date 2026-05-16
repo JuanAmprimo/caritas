@@ -101,7 +101,7 @@ export default function Register() {
               <Form.Control.Feedback type="invalid">{errors.confirmPassword}</Form.Control.Feedback>
             </Form.Group>
 
-            <Button type="submit" className="w-100 fw-semibold" style={{ backgroundColor: "#2563eb", border: "none" }}>
+            <Button type="submit" className="w-100 fw-semibold list-button" style={{ backgroundColor: "#2563eb", border: "none" }}>
               Registrarse
             </Button>
           </Form>
