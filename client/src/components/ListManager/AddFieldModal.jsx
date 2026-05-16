@@ -33,7 +33,7 @@ export default function AddFieldModal({
             <option value="text">Texto</option>
             <option value="number">Número</option>
             <option value="date">Fecha</option>
-            <option value="alphanumeric">Alfanumérico</option>
+            <option value="alphanumeric">numero y letra</option>
           </Form.Select>
         </Form.Group>
       </Modal.Body>
