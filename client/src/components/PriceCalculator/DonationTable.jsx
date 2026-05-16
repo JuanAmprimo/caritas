@@ -66,7 +66,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
                 <Button
                   size="sm"
                   style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
-                  onClick={() => deleteDonation(donation.id)}
+                  onClick={() => deleteDonation(donation._id)}
                 >
                   <Trash2 size={14} />
                 </Button>

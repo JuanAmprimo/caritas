@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Card, Form } from 'react-bootstrap';
 import DonationForm from './DonationForm';
 import DonationTable from './DonationTable';
@@ -16,6 +16,14 @@ export default function PriceCalculator() {
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 🔹 Traer donaciones del backend al cargar
+  useEffect(() => {
+    fetch("http://localhost:3001/api/donations?userId=12345")
+      .then(res => res.json())
+      .then(data => setDonations(data))
+      .catch(err => console.error("Error al traer donaciones:", err));
+  }, []);
+
   const handleInputChange = (field, value) => setFormData({ ...formData, [field]: value });
 
   const handleImageUpload = (e) => {
@@ -27,26 +35,54 @@ export default function PriceCalculator() {
     }
   };
 
-  const addOrUpdateDonation = () => {
+  // 🔹 Crear o actualizar donación en backend
+  const addOrUpdateDonation = async () => {
     if (!formData.name || !formData.price) {
-      alert('Por favor completa el nombre y precio de la donación');
+      alert("Por favor completa el nombre y precio de la donación");
       return;
     }
-    if (editingId) {
-      setDonations(donations.map(d => d.id === editingId ? { ...d, ...formData } : d));
-      setEditingId(null);
-    } else {
-      const newDonation = { id: Date.now().toString(), ...formData };
-      setDonations([...donations, newDonation]);
+
+    try {
+      if (editingId) {
+        const res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        setDonations(donations.map(d => d._id === editingId ? data : d));
+        setEditingId(null);
+      } else {
+        const res = await fetch("http://localhost:3001/api/donations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...formData, userId: "12345" })
+        });
+        const data = await res.json();
+        setDonations([...donations, data]);
+      }
+
+      setFormData({ name:'', price:0, quantity:1, description:'', image:'', size:'' });
+    } catch (err) {
+      console.error("Error al guardar donación:", err);
     }
-    setFormData({ name: '', price: 0, quantity: 1, description: '', image: '', size: '' });
   };
 
-  const editDonation = (donation) => { setFormData(donation); setEditingId(donation.id); };
-  const deleteDonation = (id) => setDonations(donations.filter(d => d.id !== id));
+  const editDonation = (donation) => { setFormData(donation); setEditingId(donation._id); };
+  const deleteDonation = async (id) => {
+  try {
+    await fetch(`http://localhost:3001/api/donations/${id}`, { method: "DELETE" });
+    // 🔹 Usar _id en la comparación
+    setDonations(donations.filter(d => d._id !== id));
+  } catch (err) {
+    console.error("Error al eliminar donación:", err);
+  }
+};
+
+
   const updateQuantity = (id, quantity) => {
     if (quantity < 0) return;
-    setDonations(donations.map(d => d.id === id ? { ...d, quantity } : d));
+    setDonations(donations.map(d => d._id === id ? { ...d, quantity } : d));
   };
 
   const calculateTotal = () => donations.reduce((sum, d) => sum + (d.price * d.quantity), 0);
