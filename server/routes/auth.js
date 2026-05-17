@@ -61,12 +61,16 @@ router.post("/refresh", async (req, res) => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
-
     if (!user || user.refreshToken !== refreshToken) {
       return res.status(403).json({ error: "Refresh token inválido" });
     }
 
-    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    const newAccessToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
     res.json({ accessToken: newAccessToken });
   } catch {
     res.status(403).json({ error: "Refresh token inválido o expirado" });

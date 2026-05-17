@@ -93,7 +93,7 @@ export default function ListManager({ searchTerm }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title: listTitle, fields, items }),
+        body: JSON.stringify({ title: listTitle, fields, items }), // 🔹 enviar userId para asociar la lista al usuario
       });
 
       const data = await res.json();
@@ -196,32 +196,54 @@ export default function ListManager({ searchTerm }) {
 
   const updateList = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-      const currentList = lists.find((l) => l.title === listTitle);
-      if (!currentList) return;
+      let token = localStorage.getItem("accessToken");
+      let currentList = lists.find((l) => l.title === listTitle);
 
-      const res = await fetch(
-        `http://localhost:3001/api/lists/${currentList._id}`,
-        {
-          method: "PUT",
+      let res;
+      if (currentList) {
+        // 🔹 Actualizar lista existente
+        res = await fetch(
+          `http://localhost:3001/api/lists/${currentList._id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ title: listTitle, fields, items }),
+          },
+        );
+      } else {
+        // 🔹 Crear lista nueva automáticamente
+        res = await fetch("http://localhost:3001/api/lists", {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ title: listTitle, fields, items }),
-        },
-      );
+          body: JSON.stringify({
+            title: listTitle || "Lista sin nombre",
+            fields,
+            items
+          }),
+        });
+      }
 
       const data = await res.json();
       if (res.ok) {
-        setLists(lists.map((l) => (l._id === currentList._id ? data : l)));
+        if (currentList) {
+          setLists(lists.map((l) => (l._id === currentList._id ? data : l)));
+        } else {
+          setLists([...lists, data]);
+        }
       } else {
-        alert(data.error || "Error al actualizar la lista");
+        alert(data.error || "Error al guardar la lista");
       }
     } catch (err) {
       console.error("Error al actualizar lista:", err);
     }
   };
+
   return (
     <Container fluid className="py-4">
       <Card
