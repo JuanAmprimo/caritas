@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Container, Card, Form, Button } from "react-bootstrap";
+import { Container, Card, Form, Button, Toast, ToastContainer } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 export default function Register() {
   const [formData, setFormData] = useState({ username: "", email: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
+  const [showToast, setShowToast] = useState(false);       // 🔹 estado para mostrar el toast
+  const [toastMessage, setToastMessage] = useState("");    // 🔹 mensaje del toast
+  const [toastVariant, setToastVariant] = useState("success"); // 🔹 color del toast (success/danger)
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,11 +32,31 @@ export default function Register() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      console.log("Register attempt:", formData);
-      alert("Funcionalidad de registro en desarrollo");
+      try {
+        const res = await fetch("http://localhost:3001/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          setToastMessage("Registro exitoso ✅. Ahora puedes iniciar sesión.");
+          setToastVariant("success");
+          setShowToast(true);
+        } else {
+          setToastMessage(data.error || "Error al registrarse");
+          setToastVariant("danger");
+          setShowToast(true);
+        }
+      } catch (err) {
+        setToastMessage("Error de conexión con el servidor");
+        setToastVariant("danger");
+        setShowToast(true);
+      }
     }
   };
 
@@ -112,6 +135,16 @@ export default function Register() {
           </div>
         </Card.Body>
       </Card>
+
+      {/* 🔹 Toast de feedback */}
+      <ToastContainer position="top-end" className="p-3">
+        <Toast bg={toastVariant} show={showToast} onClose={() => setShowToast(false)} delay={3000} autohide>
+          <Toast.Header>
+            <strong className="me-auto">Sistema</strong>
+          </Toast.Header>
+          <Toast.Body>{toastMessage}</Toast.Body>
+        </Toast>
+      </ToastContainer>
     </Container>
   );
 }

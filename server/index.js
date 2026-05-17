@@ -5,7 +5,8 @@ import dotenv from "dotenv";
 import listRoutes from "./routes/lists.js";
 import donationRoutes from "./routes/donations.js";
 import itemRoutes from "./routes/items.js";
-
+import authRoutes from "./routes/auth.js";
+import bcrypt from "bcryptjs";
 
 dotenv.config();
 const app = express();
@@ -22,6 +23,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/api/lists", listRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/items", itemRoutes);
+app.use("/api/auth", authRoutes);
 
 // Ruta de prueba
 app.get("/", (req, res) => {

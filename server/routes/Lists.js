@@ -1,28 +1,25 @@
 import express from "express";
 import List from "../models/List.js";
+import authMiddleware from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Crear lista
-router.post("/", async (req, res) => {
+// Crear lista (requiere login)
+router.post("/", authMiddleware, async (req, res) => {
   try {
-    console.log("Datos recibidos:", req.body); // 👀 verificar que llega title
-    const { title, userId, fields, items } = req.body;
-    const newList = new List({ title, userId, fields, items });
+    const { title, fields, items } = req.body;
+    const newList = new List({ title, userId: req.user.id, fields, items });
     await newList.save();
-    console.log("Lista guardada:", newList); // 👀 confirmar que se guardó con title
     res.json(newList);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-
-// Obtener listas por usuario
-router.get("/", async (req, res) => {
+// Obtener listas del usuario logueado
+router.get("/", authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.query;
-    const lists = await List.find({ userId });
+    const lists = await List.find({ userId: req.user.id });
     res.json(lists);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -30,9 +27,9 @@ router.get("/", async (req, res) => {
 });
 
 // Obtener lista por id
-router.get("/:id", async (req, res) => {
+router.get("/:id", authMiddleware, async (req, res) => {
   try {
-    const list = await List.findById(req.params.id);
+    const list = await List.findOne({ _id: req.params.id, userId: req.user.id });
     res.json(list);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -40,9 +37,13 @@ router.get("/:id", async (req, res) => {
 });
 
 // Actualizar lista
-router.put("/:id", async (req, res) => {
+router.put("/:id", authMiddleware, async (req, res) => {
   try {
-    const updated = await List.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await List.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      req.body,
+      { new: true }
+    );
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -50,9 +51,9 @@ router.put("/:id", async (req, res) => {
 });
 
 // Eliminar lista
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authMiddleware, async (req, res) => {
   try {
-    await List.findByIdAndDelete(req.params.id);
+    await List.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
     res.json({ message: "Lista eliminada" });
   } catch (err) {
     res.status(400).json({ error: err.message });

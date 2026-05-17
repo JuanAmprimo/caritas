@@ -21,11 +21,15 @@ export default function ListManager({ searchTerm }) {
 
   // 🔹 Traer listas desde MongoDB
   useEffect(() => {
-    fetch("http://localhost:3001/api/lists?userId=12345")
-      .then(res => res.json())
-      .then(data => setLists(data))
-      .catch(err => console.error("Error al traer listas:", err));
+  const token = localStorage.getItem("token");
+  fetch("http://localhost:3001/api/lists", {
+    headers: { "Authorization": `Bearer ${token}` }
+  })
+    .then(res => res.json())
+    .then(data => setLists(data))
+    .catch(err => console.error("Error al traer listas:", err));
   }, []);
+
 
   const addField = () => {
     if (newFieldName.trim()) {
@@ -53,37 +57,59 @@ export default function ListManager({ searchTerm }) {
   };
 
   // 🔹 Guardar lista en MongoDB con nombre
-    const saveList = async () => {
-      if (!listTitle.trim()) {
-        alert("Debes poner un nombre a la lista antes de guardarla.");
-        return;
-      }
+  const saveList = async () => {
+    if (!listTitle.trim()) {
+      alert("Debes poner un nombre a la lista antes de guardarla.");
+      return;
+    }
 
-      try {
-        const res = await fetch("http://localhost:3001/api/lists", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: listTitle, userId: "12345", fields, items })
-        });
-        const data = await res.json();
-        console.log("Respuesta del backend:", data);
+    try {
+      const token = localStorage.getItem("token"); // 🔹 recuperar token guardado en login
+
+      const res = await fetch("http://localhost:3001/api/lists", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // 🔹 enviar token al backend
+        },
+        body: JSON.stringify({ title: listTitle, fields, items })
+      });
+
+      const data = await res.json();
+      console.log("Respuesta del backend:", data);
+
+      if (res.ok) {
         setLists([...lists, data]);
-        // ❌ no borres items, fields ni title
-      } catch (err) {
-        console.error("Error al guardar lista:", err);
+        alert("Lista guardada con éxito ✅");
+      } else {
+        alert(data.error || "Error al guardar la lista");
       }
-    };
+    } catch (err) {
+      console.error("Error al guardar lista:", err);
+    }
+  };
 
 
 
   const deleteList = async (id) => {
     try {
-      await fetch(`http://localhost:3001/api/lists/${id}`, { method: "DELETE" });
-      setLists(lists.filter(l => l._id !== id));
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3001/api/lists/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setLists(lists.filter(l => l._id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Error al eliminar la lista");
+      }
     } catch (err) {
       console.error("Error al eliminar lista:", err);
     }
   };
+
 
   const addItem = () => {
     if (fields.length === 0) {
@@ -130,35 +156,46 @@ export default function ListManager({ searchTerm }) {
   );
 
   const loadList = async (list) => {
-  try {
-    const res = await fetch(`http://localhost:3001/api/lists/${list._id}`);
-    const data = await res.json();
-    setFields(data.fields || []);
-    setItems(data.items || []);
-    setListTitle(data.title);
-  } catch (err) {
-    console.error("Error al cargar lista:", err);
-  }
-};
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3001/api/lists/${list._id}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setFields(data.fields || []);
+      setItems(data.items || []);
+      setListTitle(data.title);
+    } catch (err) {
+      console.error("Error al cargar lista:", err);
+    }
+  };
+
 
   const updateList = async () => {
-  try {
-    const currentList = lists.find(l => l.title === listTitle);
-    if (!currentList) return;
+    try {
+      const token = localStorage.getItem("token");
+      const currentList = lists.find(l => l.title === listTitle);
+      if (!currentList) return;
 
-    const res = await fetch(`http://localhost:3001/api/lists/${currentList._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: listTitle, userId: "12345", fields, items })
-    });
-    const data = await res.json();
+      const res = await fetch(`http://localhost:3001/api/lists/${currentList._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ title: listTitle, fields, items })
+      });
 
-    // 🔹 actualizar estado con la lista modificada
-    setLists(lists.map(l => l._id === currentList._id ? data : l));
-  } catch (err) {
-    console.error("Error al actualizar lista:", err);
-  }
-};
+      const data = await res.json();
+      if (res.ok) {
+        setLists(lists.map(l => l._id === currentList._id ? data : l));
+      } else {
+        alert(data.error || "Error al actualizar la lista");
+      }
+    } catch (err) {
+      console.error("Error al actualizar lista:", err);
+    }
+  };
 
 
   return (

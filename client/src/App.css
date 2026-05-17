@@ -64,3 +64,11 @@
   background-color: #facc15; /* opcional: cambia color al hover */
   color: #000; /* opcional: cambia texto */
 }
+
+.dropdown-menu {
+  z-index: 2000 !important; /* asegura que quede por encima */
+}
+
+.nav-link-custom.show {
+  border-bottom: 3px solid #facc15; /* línea amarilla cuando se despliega */
+}

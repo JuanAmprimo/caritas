@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Container, Card, Form, Button } from "react-bootstrap";
+import { Container, Card, Form, Button, Toast, ToastContainer } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
+  const [showToast, setShowToast] = useState(false);        // 🔹 estado para mostrar el toast
+  const [toastMessage, setToastMessage] = useState("");     // 🔹 mensaje del toast
+  const [toastVariant, setToastVariant] = useState("success"); // 🔹 color del toast (success/danger)
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,11 +26,33 @@ export default function Login() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      console.log("Login attempt:", formData);
-      alert("Funcionalidad de login en desarrollo");
+      try {
+        const res = await fetch("http://localhost:3001/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem("token", data.token); // 🔹 guardar token
+          setToastMessage("Login exitoso ✅. Bienvenido!");
+          setToastVariant("success");
+          setShowToast(true);
+        } else {
+          setToastMessage(data.error || "Error al iniciar sesión");
+          setToastVariant("danger");
+          setShowToast(true);
+        }
+      } catch (err) {
+        console.error("Error en login:", err);
+        setToastMessage("Error de conexión con el servidor");
+        setToastVariant("danger");
+        setShowToast(true);
+      }
     }
   };
 
@@ -78,6 +103,16 @@ export default function Login() {
           </div>
         </Card.Body>
       </Card>
+
+      {/* 🔹 Toast de feedback */}
+      <ToastContainer position="top-end" className="p-3">
+        <Toast bg={toastVariant} show={showToast} onClose={() => setShowToast(false)} delay={3000} autohide>
+          <Toast.Header>
+            <strong className="me-auto">Sistema</strong>
+          </Toast.Header>
+          <Toast.Body>{toastMessage}</Toast.Body>
+        </Toast>
+      </ToastContainer>
     </Container>
   );
 }
