@@ -17,11 +17,13 @@ export default function PriceCalculator({ searchTerm }) {
 
   // 🔹 Traer donaciones del backend al cargar
   useEffect(() => {
+    const API_URL = import.meta.env.VITE_API_URL;
+
     const fetchDonations = async () => {
       try {
-        const res = await fetch("/api/donations?userId=12345", {
+        const res = await fetch(`${API_URL}/api/donations?userId=12345`, {
           method: "GET",
-          credentials: "include" // 🔹 cookies
+          credentials: "include", // 🔹 cookies
         });
 
         const data = await res.json();
@@ -58,18 +60,18 @@ export default function PriceCalculator({ searchTerm }) {
     try {
       let res;
       if (editingId) {
-        res = await fetch(`/api/donations/${editingId}`, {
+        res = await fetch(`${API_URL}/api/donations/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
-          credentials: "include" // 🔹 cookies
+          credentials: "include", // 🔹 cookies
         });
       } else {
-        res = await fetch("/api/donations", {
+        res = await fetch(`${API_URL}/api/donations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...formData, userId: "12345" }),
-          credentials: "include" // 🔹 cookies
+          credentials: "include", // 🔹 cookies
         });
       }
 
@@ -102,13 +104,13 @@ export default function PriceCalculator({ searchTerm }) {
 
   const deleteDonation = async (id) => {
     try {
-      const res = await fetch(`/api/donations/${id}`, {
+      const res = await fetch(`${API_URL}/api/donations/${id}`, {
         method: "DELETE",
-        credentials: "include" // 🔹 cookies
+        credentials: "include", // 🔹 cookies
       });
 
       if (res.ok) {
-        setDonations(donations.filter(d => d._id !== id));
+        setDonations(donations.filter((d) => d._id !== id));
       }
     } catch (err) {
       console.error("Error al eliminar donación:", err);

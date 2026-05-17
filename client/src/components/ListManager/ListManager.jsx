@@ -24,9 +24,11 @@ export default function ListManager({ searchTerm }) {
 
   // 🔹 Traer listas desde MongoDB
   useEffect(() => {
+    const API_URL = import.meta.env.VITE_API_URL;
+
     const fetchLists = async () => {
       try {
-        const res = await fetch("/api/lists", {
+        const res = await fetch(`${API_URL}/api/lists`, {
           method: "GET",
           credentials: "include", // 🔹 cookies
         });
@@ -77,8 +79,10 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
+    const API_URL = import.meta.env.VITE_API_URL;
+
     try {
-      const res = await fetch("/api/lists", {
+      const res = await fetch(`${API_URL}/api/lists`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: listTitle, fields, items }),
@@ -98,8 +102,9 @@ export default function ListManager({ searchTerm }) {
   };
 
   const deleteList = async (id) => {
+    const API_URL = import.meta.env.VITE_API_URL;
     try {
-      const res = await fetch(`/api/lists/${id}`, {
+      const res = await fetch(`${API_URL}/api/lists/${id}`, {
         method: "DELETE",
         credentials: "include", // 🔹 cookies
       });
@@ -168,8 +173,9 @@ export default function ListManager({ searchTerm }) {
   );
 
   const loadList = async (list) => {
+    const API_URL = import.meta.env.VITE_API_URL;
     try {
-      const res = await fetch(`/api/lists/${list._id}`, {
+      const res = await fetch(`${API_URL}/api/lists/${list._id}`, {
         method: "GET",
         credentials: "include", // 🔹 cookies
       });
@@ -184,11 +190,12 @@ export default function ListManager({ searchTerm }) {
   };
 
   const updateList = async () => {
+    const API_URL = import.meta.env.VITE_API_URL;
     try {
       let res;
       if (currentListId) {
         // 🔹 Actualizar lista existente
-        res = await fetch(`/api/lists/${currentListId}`, {
+        res = await fetch(`${API_URL}/api/lists/${currentListId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: listTitle, fields, items }),
@@ -196,7 +203,7 @@ export default function ListManager({ searchTerm }) {
         });
       } else {
         // 🔹 Crear lista nueva automáticamente
-        res = await fetch("/api/lists", {
+        res = await fetch(`${API_URL}/api/lists`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
