@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Container, Card } from "react-bootstrap";
 import DonationForm from "./DonationForm";
 import DonationTable from "./DonationTable";
-import { refreshAccessToken } from "../../utils/auth.js"; // ✅ import nombrado
 
 export default function PriceCalculator({ searchTerm }) {
   const [donations, setDonations] = useState([]);
@@ -20,24 +19,10 @@ export default function PriceCalculator({ searchTerm }) {
   useEffect(() => {
     const fetchDonations = async () => {
       try {
-        let token = localStorage.getItem("accessToken"); // 🔹 usa accessToken
-        let res = await fetch(
-          "http://localhost:3001/api/donations?userId=12345",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-
-        // 🔹 Si el token venció, lo renovamos
-        if (res.status === 401) {
-          token = await refreshAccessToken();
-          res = await fetch(
-            "http://localhost:3001/api/donations?userId=12345",
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
-        }
+        const res = await fetch("/api/donations?userId=12345", {
+          method: "GET",
+          credentials: "include" // 🔹 cookies
+        });
 
         const data = await res.json();
         setDonations(Array.isArray(data) ? data : []);
@@ -71,26 +56,20 @@ export default function PriceCalculator({ searchTerm }) {
     }
 
     try {
-      let token = localStorage.getItem("accessToken");
       let res;
-
       if (editingId) {
-        res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
+        res = await fetch(`/api/donations/${editingId}`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
+          credentials: "include" // 🔹 cookies
         });
       } else {
-        res = await fetch("http://localhost:3001/api/donations", {
+        res = await fetch("/api/donations", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...formData, userId: "12345" }),
+          credentials: "include" // 🔹 cookies
         });
       }
 
@@ -123,10 +102,9 @@ export default function PriceCalculator({ searchTerm }) {
 
   const deleteDonation = async (id) => {
     try {
-      let token = localStorage.getItem("accessToken");
-      const res = await fetch(`http://localhost:3001/api/donations/${id}`, {
+      const res = await fetch(`/api/donations/${id}`, {
         method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
+        credentials: "include" // 🔹 cookies
       });
 
       if (res.ok) {
@@ -136,7 +114,6 @@ export default function PriceCalculator({ searchTerm }) {
       console.error("Error al eliminar donación:", err);
     }
   };
-
 
   const updateQuantity = (id, quantity) => {
     if (quantity < 0) return;

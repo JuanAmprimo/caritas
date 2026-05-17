@@ -21,6 +21,7 @@
     "mongoose": "^9.6.2"
   },
   "devDependencies": {
+    "cookie-parser": "^1.4.7",
     "nodemon": "^3.1.14"
   }
 }

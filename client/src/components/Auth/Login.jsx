@@ -1,15 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Container, Card, Form, Button, Toast, ToastContainer } from "react-bootstrap";
-import { saveTokens } from "../../utils/auth.js";
 
 export default function Login({ setIsLoggedIn }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
-  const [showToast, setShowToast] = useState(false);        // 🔹 estado para mostrar el toast
-  const [toastMessage, setToastMessage] = useState("");     // 🔹 mensaje del toast
-  const [toastVariant, setToastVariant] = useState("success"); // 🔹 color del toast (success/danger)
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState("success");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,31 +27,24 @@ export default function Login({ setIsLoggedIn }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("accessToken");
-    if (storedToken) {
-      navigate("/lists");
-    }
-  }, [navigate]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        const res = await fetch("http://localhost:3001/api/auth/login", {
+        const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(formData),
+          credentials: "include" // 🔹 manda y recibe cookies
         });
         const data = await res.json();
 
         if (res.ok) {
-            saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-            if (setIsLoggedIn) setIsLoggedIn(true);
-            setToastMessage("Login exitoso ✅. Bienvenido!");
-            setToastVariant("success");
-            setShowToast(true);
-            navigate("/lists");
+          if (setIsLoggedIn) setIsLoggedIn(true);
+          setToastMessage("Login exitoso ✅. Bienvenido!");
+          setToastVariant("success");
+          setShowToast(true);
+          navigate("/lists");
         } else {
           setToastMessage(data.error || "Error al iniciar sesión");
           setToastVariant("danger");

@@ -26,7 +26,10 @@ export default function ListManager({ searchTerm }) {
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        const res = await apiFetch("http://localhost:3001/api/lists");
+        const res = await fetch("/api/lists", {
+          method: "GET",
+          credentials: "include", // 🔹 cookies
+        });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
           setLists(data);
@@ -75,10 +78,11 @@ export default function ListManager({ searchTerm }) {
     }
 
     try {
-      const res = await apiFetch("http://localhost:3001/api/lists", {
+      const res = await fetch("/api/lists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: listTitle, fields, items }),
+        credentials: "include", // 🔹 cookies
       });
 
       const data = await res.json();
@@ -95,8 +99,9 @@ export default function ListManager({ searchTerm }) {
 
   const deleteList = async (id) => {
     try {
-      const res = await apiFetch(`http://localhost:3001/api/lists/${id}`, {
+      const res = await fetch(`/api/lists/${id}`, {
         method: "DELETE",
+        credentials: "include", // 🔹 cookies
       });
 
       if (res.ok) {
@@ -164,12 +169,15 @@ export default function ListManager({ searchTerm }) {
 
   const loadList = async (list) => {
     try {
-      const res = await apiFetch(`http://localhost:3001/api/lists/${list._id}`);
+      const res = await fetch(`/api/lists/${list._id}`, {
+        method: "GET",
+        credentials: "include", // 🔹 cookies
+      });
       const data = await res.json();
       setFields(data.fields || []);
       setItems(data.items || []);
       setListTitle(data.title);
-      setCurrentListId(data._id); // 🔹 guardamos el id de la lista cargada
+      setCurrentListId(data._id);
     } catch (err) {
       console.error("Error al cargar lista:", err);
     }
@@ -180,17 +188,15 @@ export default function ListManager({ searchTerm }) {
       let res;
       if (currentListId) {
         // 🔹 Actualizar lista existente
-        res = await apiFetch(
-          `http://localhost:3001/api/lists/${currentListId}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: listTitle, fields, items }),
-          },
-        );
+        res = await fetch(`/api/lists/${currentListId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: listTitle, fields, items }),
+          credentials: "include", // 🔹 cookies
+        });
       } else {
         // 🔹 Crear lista nueva automáticamente
-        res = await apiFetch("http://localhost:3001/api/lists", {
+        res = await fetch("/api/lists", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -198,6 +204,7 @@ export default function ListManager({ searchTerm }) {
             fields,
             items,
           }),
+          credentials: "include", // 🔹 cookies
         });
       }
 
@@ -207,7 +214,7 @@ export default function ListManager({ searchTerm }) {
           setLists(lists.map((l) => (l._id === currentListId ? data : l)));
         } else {
           setLists([...lists, data]);
-          setCurrentListId(data._id); // 🔹 asignar id si era nueva
+          setCurrentListId(data._id);
         }
       } else {
         alert(data.error || "Error al guardar la lista");

@@ -31,7 +31,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+// Login con cookies
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
@@ -50,12 +50,27 @@ router.post("/login", async (req, res) => {
   user.refreshToken = refreshToken;
   await user.save();
 
-  res.json({ accessToken, refreshToken });
+  // 🔹 Guardar tokens en cookies seguras
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 15 * 60 * 1000 // 15 minutos
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+  });
+
+  res.json({ message: "Login exitoso" });
 });
 
-// Refresh token
+// Refresh token con cookies
 router.post("/refresh", async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) return res.status(401).json({ error: "Refresh token requerido" });
 
   try {
@@ -71,7 +86,14 @@ router.post("/refresh", async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    res.json({ accessToken: newAccessToken });
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 15 * 60 * 1000
+    });
+
+    res.json({ message: "Access token renovado" });
   } catch {
     res.status(403).json({ error: "Refresh token inválido o expirado" });
   }
