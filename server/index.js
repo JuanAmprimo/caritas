@@ -12,8 +12,13 @@ import cookieParser from "cookie-parser";
 dotenv.config();
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",              // desarrollo local
+  "https://mi-app-caritas.netlify.app"  // producción en Netlify
+];
+
 app.use(cors({
-  origin: "https://TU-APP-NETLIFY.netlify.app", // 🔹 URL de tu frontend
+  origin: allowedOrigins,
   credentials: true
 }));
 
