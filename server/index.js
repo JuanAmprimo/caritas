@@ -14,7 +14,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",              // desarrollo local
-  "https://mi-app-caritas.netlify.app"  // producción en Netlify
+  "https://caritas-funes.netlify.app"  // producción en Netlify
 ];
 
 app.use(cors({
