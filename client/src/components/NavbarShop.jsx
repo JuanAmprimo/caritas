@@ -86,6 +86,7 @@ export default function NavbarShop({ searchTerm, setSearchTerm }) {
               id="login-dropdown"
               align="end"
               className="text-white nav-link-custom"
+              renderMenuOnMount={true}
             >
               <NavDropdown.Item as={NavLink} to="/login">Iniciar Sesión</NavDropdown.Item>
               <NavDropdown.Item as={NavLink} to="/register">Registrarse</NavDropdown.Item>

@@ -6,7 +6,8 @@ import AddFieldModal from "./AddFieldModal";
 import EditItemModal from "./EditItemModal";
 import ItemForm from "./ItemForm";
 import ItemTable from "./ItemTable";
-import { refreshAccessToken } from "../../utils/auth.js"; // ✅ import nombrado
+import { refreshAccessToken } from "../../utils/auth.js";
+import { apiFetch } from "../../utils/auth.js";
 
 export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
@@ -19,26 +20,14 @@ export default function ListManager({ searchTerm }) {
   const [newFieldType, setNewFieldType] = useState("text");
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({});
+  const [currentListId, setCurrentListId] = useState(null);
 
   // 🔹 Traer listas desde MongoDB
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        let token = localStorage.getItem("accessToken");
-        let res = await fetch("http://localhost:3001/api/lists", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        // 🔹 Si el token venció, lo renovamos
-        if (res.status === 401) {
-          token = await refreshAccessToken();
-          res = await fetch("http://localhost:3001/api/lists", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
-
+        const res = await apiFetch("http://localhost:3001/api/lists");
         const data = await res.json();
-
         if (res.ok && Array.isArray(data)) {
           setLists(data);
         } else {
@@ -86,14 +75,10 @@ export default function ListManager({ searchTerm }) {
     }
 
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch("http://localhost:3001/api/lists", {
+      const res = await apiFetch("http://localhost:3001/api/lists", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: listTitle, fields, items }), // 🔹 enviar userId para asociar la lista al usuario
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: listTitle, fields, items }),
       });
 
       const data = await res.json();
@@ -110,10 +95,8 @@ export default function ListManager({ searchTerm }) {
 
   const deleteList = async (id) => {
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`http://localhost:3001/api/lists/${id}`, {
+      const res = await apiFetch(`http://localhost:3001/api/lists/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
@@ -181,14 +164,12 @@ export default function ListManager({ searchTerm }) {
 
   const loadList = async (list) => {
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`http://localhost:3001/api/lists/${list._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`http://localhost:3001/api/lists/${list._id}`);
       const data = await res.json();
       setFields(data.fields || []);
       setItems(data.items || []);
       setListTitle(data.title);
+      setCurrentListId(data._id); // 🔹 guardamos el id de la lista cargada
     } catch (err) {
       console.error("Error al cargar lista:", err);
     }
@@ -196,45 +177,37 @@ export default function ListManager({ searchTerm }) {
 
   const updateList = async () => {
     try {
-      let token = localStorage.getItem("accessToken");
-      let currentList = lists.find((l) => l.title === listTitle);
-
       let res;
-      if (currentList) {
+      if (currentListId) {
         // 🔹 Actualizar lista existente
-        res = await fetch(
-          `http://localhost:3001/api/lists/${currentList._id}`,
+        res = await apiFetch(
+          `http://localhost:3001/api/lists/${currentListId}`,
           {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ title: listTitle, fields, items }),
           },
         );
       } else {
         // 🔹 Crear lista nueva automáticamente
-        res = await fetch("http://localhost:3001/api/lists", {
+        res = await apiFetch("http://localhost:3001/api/lists", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: listTitle || "Lista sin nombre",
             fields,
-            items
+            items,
           }),
         });
       }
 
       const data = await res.json();
       if (res.ok) {
-        if (currentList) {
-          setLists(lists.map((l) => (l._id === currentList._id ? data : l)));
+        if (currentListId) {
+          setLists(lists.map((l) => (l._id === currentListId ? data : l)));
         } else {
           setLists([...lists, data]);
+          setCurrentListId(data._id); // 🔹 asignar id si era nueva
         }
       } else {
         alert(data.error || "Error al guardar la lista");
@@ -292,10 +265,12 @@ export default function ListManager({ searchTerm }) {
           {/* Tabla Items */}
           <div
             style={{
-              height: "150px",
+              height: "230px",
               overflowY: filteredItems.length > 0 ? "scroll" : "visible",
               border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
               padding: filteredItems.length > 0 ? "10px" : "0",
+              position: "relative",
+              zIndex: 1,
             }}
           >
             <ItemTable

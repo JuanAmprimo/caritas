@@ -6,8 +6,8 @@ export default function authMiddleware(req, res, next) {
   if (!token) return res.status(401).json({ error: "Token requerido" });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // 🔹 usar JWT_SECRET
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = { id: decoded.id }; // 🔹 aseguramos que solo guardamos el id
     next();
   } catch {
     res.status(401).json({ error: "Token inválido o expirado" });

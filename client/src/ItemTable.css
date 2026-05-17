@@ -1,0 +1,34 @@
+.custom-table {
+  background-color: #f9fafb;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+}
+
+.table-header th {
+  background-color: #0d6efd; /* azul Bootstrap */
+  color: white;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.custom-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.custom-table tr:hover {
+  background-color: #e9f5ff; /* azul claro al pasar el mouse */
+  transition: background-color 0.2s ease-in-out;
+}
+
+.btn-edit {
+  background-color: #f59e0b !important; /* naranja */
+  border-color: #f59e0b !important;
+  color: white;
+}
+
+.btn-delete {
+  background-color: #ef4444 !important; /* rojo */
+  border-color: #ef4444 !important;
+  color: white;
+}

@@ -27,7 +27,7 @@ export default function DonationForm({ formData, handleInputChange, handleImageU
               value={formData.price || ''}
               onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
               placeholder="0.00"
-              step="0.01"
+              step="1000"
               required
             />
           </InputGroup>

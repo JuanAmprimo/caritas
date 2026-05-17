@@ -20,7 +20,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
         <tbody>
           {donations.map(donation => (
             <tr 
-              key={donation.id}
+              key={donation._id}
               data-name={`${donation.name} ${donation.description} ${donation.price} ${donation.size}`.toLowerCase()}
             >
               <td style={{ width: '80px' }}>
@@ -40,6 +40,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
                   </div>
                 )}
               </td>
+
               <td>{donation.name}</td>
               <td>{donation.description || '-'}</td>
               <td>${donation.price.toFixed(2)}</td>

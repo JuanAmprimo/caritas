@@ -65,3 +65,7 @@
   color: #000; /* opcional: cambia texto */
 }
 
+#login-dropdown .dropdown-menu {
+  z-index: 3000 !important;
+  position: absolute !important;
+}

@@ -1,17 +1,18 @@
 import { Table, Button } from 'react-bootstrap';
 import { Edit2, Trash2 } from 'lucide-react';
+import  '/src/ItemTable.css';
 
 export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
   return (
     <div>
-      <h5 className="mb-3">Items de la Lista</h5>
+      <h5 className="mb-3 text-primary fw-bold">📋 Items de la Lista</h5>
 
       {items.length === 0 ? (
-        <p className="text-muted">No hay items en la lista. Agrega uno arriba.</p>
+        <p className="text-muted fst-italic">No hay items en la lista. Agrega uno arriba.</p>
       ) : (
         <div className="table-responsive">
-          <Table striped bordered hover>
-            <thead className="table-light">
+          <Table striped bordered hover responsive className="custom-table align-middle text-center">
+            <thead className="table-header">
               <tr>
                 {fields.map(field => (
                   <th key={field.id} className="text-capitalize">{field.name}</th>
@@ -22,24 +23,23 @@ export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
             <tbody>
               {items.map(item => (
                 <tr 
-                    key={item.id} 
-                    data-name={Object.values(item).join(" ").toLowerCase()} // todos los campos concatenados
-                  >
+                  key={item.id} 
+                  data-name={Object.values(item).join(" ").toLowerCase()}
+                >
                   {fields.map(field => (
                     <td key={field.id}>{item[field.name] || '-'}</td>
                   ))}
                   <td>
                     <Button
                       size="sm"
-                      className="me-2"
-                      style={{ backgroundColor: '#f59e0b', borderColor: '#f59e0b' }}
+                      className="me-2 btn-edit"
                       onClick={() => openEditItem(item)}
                     >
                       <Edit2 size={14} />
                     </Button>
                     <Button
                       size="sm"
-                      style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
+                      className="btn-delete"
                       onClick={() => deleteItem(item.id)}
                     >
                       <Trash2 size={14} />

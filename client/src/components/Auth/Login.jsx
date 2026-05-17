@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Container, Card, Form, Button, Toast, ToastContainer } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { saveTokens } from "../../utils/auth.js";
 
-export default function Login() {
+export default function Login({ setIsLoggedIn }) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showToast, setShowToast] = useState(false);        // 🔹 estado para mostrar el toast
@@ -26,6 +28,13 @@ export default function Login() {
     return Object.keys(newErrors).length === 0;
   };
 
+  useEffect(() => {
+    const storedToken = localStorage.getItem("accessToken");
+    if (storedToken) {
+      navigate("/lists");
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
@@ -38,11 +47,12 @@ export default function Login() {
         const data = await res.json();
 
         if (res.ok) {
-            localStorage.setItem("accessToken", data.accessToken); // 🔹 token corto
-            localStorage.setItem("refreshToken", data.refreshToken); // 🔹 token largo
+            saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+            if (setIsLoggedIn) setIsLoggedIn(true);
             setToastMessage("Login exitoso ✅. Bienvenido!");
             setToastVariant("success");
             setShowToast(true);
+            navigate("/lists");
         } else {
           setToastMessage(data.error || "Error al iniciar sesión");
           setToastVariant("danger");
