@@ -38,10 +38,11 @@ export default function Login() {
         const data = await res.json();
 
         if (res.ok) {
-          localStorage.setItem("token", data.token); // 🔹 guardar token
-          setToastMessage("Login exitoso ✅. Bienvenido!");
-          setToastVariant("success");
-          setShowToast(true);
+            localStorage.setItem("accessToken", data.accessToken); // 🔹 token corto
+            localStorage.setItem("refreshToken", data.refreshToken); // 🔹 token largo
+            setToastMessage("Login exitoso ✅. Bienvenido!");
+            setToastVariant("success");
+            setShowToast(true);
         } else {
           setToastMessage(data.error || "Error al iniciar sesión");
           setToastVariant("danger");

@@ -87,12 +87,13 @@ export default function NavbarShop({ searchTerm, setSearchTerm }) {
               align="end"
               className="text-white nav-link-custom"
             >
-
               <NavDropdown.Item as={NavLink} to="/login">Iniciar Sesión</NavDropdown.Item>
               <NavDropdown.Item as={NavLink} to="/register">Registrarse</NavDropdown.Item>
               <NavDropdown.Divider />
-              <DeleteAccountButton /> {/* 🔹 botón dentro del dropdown */}
+              <DeleteAccountButton />
             </NavDropdown>
+
+
           </Nav>
         </Navbar.Collapse>
       </Container>

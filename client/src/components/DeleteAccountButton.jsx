@@ -1,4 +1,5 @@
 import { Button } from "react-bootstrap";
+import { refreshAccessToken } from "../utils/auth.js"; // asegúrate de importar
 
 export default function DeleteAccountButton() {
   const deleteAccount = async () => {
@@ -7,16 +8,26 @@ export default function DeleteAccountButton() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3001/api/auth/delete", {
+      let token = localStorage.getItem("accessToken");
+      let res = await fetch("http://localhost:3001/api/auth/delete", {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
 
+      // 🔹 Si el accessToken venció, lo renovamos
+      if (res.status === 401) {
+        token = await refreshAccessToken();
+        res = await fetch("http://localhost:3001/api/auth/delete", {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+      }
+
       const data = await res.json();
       if (res.ok) {
         alert(data.message);
-        localStorage.removeItem("token"); // 🔹 cerrar sesión
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken"); // 🔹 limpiar ambos tokens
         window.location.href = "/register"; // 🔹 redirigir al registro
       } else {
         alert(data.error);

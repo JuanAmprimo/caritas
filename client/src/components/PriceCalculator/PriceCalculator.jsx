@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Container, Card } from 'react-bootstrap';
-import DonationForm from './DonationForm';
-import DonationTable from './DonationTable';
+import { useState, useEffect } from "react";
+import { Container, Card } from "react-bootstrap";
+import DonationForm from "./DonationForm";
+import DonationTable from "./DonationTable";
+import { refreshAccessToken } from "../../utils/auth.js"; // ✅ import nombrado
 
 export default function PriceCalculator({ searchTerm }) {
   const [donations, setDonations] = useState([]);
   const [formData, setFormData] = useState({
-    name: '',
+    name: "",
     price: 0,
     quantity: 1,
-    description: '',
-    image: '',
-    size: '',
+    description: "",
+    image: "",
+    size: "",
   });
   const [editingId, setEditingId] = useState(null);
 
@@ -19,23 +20,45 @@ export default function PriceCalculator({ searchTerm }) {
   useEffect(() => {
     const fetchDonations = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/donations?userId=12345");
+        let token = localStorage.getItem("accessToken"); // 🔹 usa accessToken
+        let res = await fetch(
+          "http://localhost:3001/api/donations?userId=12345",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        // 🔹 Si el token venció, lo renovamos
+        if (res.status === 401) {
+          token = await refreshAccessToken();
+          res = await fetch(
+            "http://localhost:3001/api/donations?userId=12345",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+        }
+
         const data = await res.json();
-        setDonations(data);
+        setDonations(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error al traer donaciones:", err);
+        setDonations([]);
       }
     };
+
     fetchDonations();
   }, []);
 
-  const handleInputChange = (field, value) => setFormData({ ...formData, [field]: value });
+  const handleInputChange = (field, value) =>
+    setFormData({ ...formData, [field]: value });
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setFormData({ ...formData, image: reader.result });
+      reader.onloadend = () =>
+        setFormData({ ...formData, image: reader.result });
       reader.readAsDataURL(file);
     }
   };
@@ -43,75 +66,121 @@ export default function PriceCalculator({ searchTerm }) {
   // 🔹 Crear o actualizar donación
   const addOrUpdateDonation = async () => {
     if (!formData.name || !formData.price) {
-      alert("Por favor completa el nombre y precio de la donación");
+      alert("Por favor completa el nombre y precio");
       return;
     }
 
     try {
+      let token = localStorage.getItem("accessToken");
+      let res;
+
       if (editingId) {
-        const res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
+        res = await fetch(`http://localhost:3001/api/donations/${editingId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData)
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
         });
-        const data = await res.json();
-        setDonations(donations.map(d => d._id === editingId ? data : d));
-        setEditingId(null);
       } else {
-        const res = await fetch("http://localhost:3001/api/donations", {
+        res = await fetch("http://localhost:3001/api/donations", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...formData, userId: "12345" })
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ...formData, userId: "12345" }),
         });
-        const data = await res.json();
-        setDonations([...donations, data]);
       }
 
-      setFormData({ name:'', price:0, quantity:1, description:'', image:'', size:'' });
+      const data = await res.json();
+      if (res.ok) {
+        setDonations(
+          editingId
+            ? donations.map((d) => (d._id === editingId ? data : d))
+            : [...donations, data],
+        );
+        setEditingId(null);
+        setFormData({
+          name: "",
+          price: 0,
+          quantity: 1,
+          description: "",
+          image: "",
+          size: "",
+        });
+      }
     } catch (err) {
       console.error("Error al guardar donación:", err);
     }
   };
 
-  const editDonation = (donation) => { setFormData(donation); setEditingId(donation._id); };
+  const editDonation = (donation) => {
+    setFormData(donation);
+    setEditingId(donation._id);
+  };
+
   const deleteDonation = async (id) => {
     try {
-      await fetch(`http://localhost:3001/api/donations/${id}`, { method: "DELETE" });
-      setDonations(donations.filter(d => d._id !== id));
+      let token = localStorage.getItem("accessToken");
+      const res = await fetch(`http://localhost:3001/api/donations/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setDonations(donations.filter(d => d._id !== id));
+      }
     } catch (err) {
       console.error("Error al eliminar donación:", err);
     }
   };
 
+
   const updateQuantity = (id, quantity) => {
     if (quantity < 0) return;
-    setDonations(donations.map(d => d._id === id ? { ...d, quantity } : d));
+    setDonations(donations.map((d) => (d._id === id ? { ...d, quantity } : d)));
   };
 
-  const calculateTotal = () => donations.reduce((sum, d) => sum + (d.price * d.quantity), 0);
+  const calculateTotal = () =>
+    donations.reduce((sum, d) => sum + d.price * d.quantity, 0);
   const calculateSubtotal = (d) => d.price * d.quantity;
+
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ name: '', price: 0, quantity: 1, description: '', image: '', size: '' });
+    setFormData({
+      name: "",
+      price: 0,
+      quantity: 1,
+      description: "",
+      image: "",
+      size: "",
+    });
   };
 
   // 🔹 Filtrar donaciones usando el searchTerm del Navbar
-  const filteredDonations = donations.filter(d =>
-    Object.values(d).some(val =>
-      String(val || "").toLowerCase().includes((searchTerm || "").toLowerCase())
-    )
+  const filteredDonations = donations.filter((d) =>
+    Object.values(d).some((val) =>
+      String(val || "")
+        .toLowerCase()
+        .includes((searchTerm || "").toLowerCase()),
+    ),
   );
 
   return (
     <Container fluid className="py-4">
       {/* Formulario */}
       <Card className="shadow-sm mb-4 border-0">
-        <Card.Header style={{ backgroundColor: '#10b981' }} className="text-white">
+        <Card.Header
+          style={{ backgroundColor: "#10b981" }}
+          className="text-white"
+        >
           <h4 className="mb-0">💰 Calculadora de Precios de Donaciones</h4>
         </Card.Header>
         <Card.Body>
-          <h5>{editingId ? 'Modificar Donación' : 'Nueva Donación'}</h5>
-          <DonationForm 
+          <h5>{editingId ? "Modificar Donación" : "Nueva Donación"}</h5>
+          <DonationForm
             formData={formData}
             handleInputChange={handleInputChange}
             handleImageUpload={handleImageUpload}
@@ -124,18 +193,24 @@ export default function PriceCalculator({ searchTerm }) {
 
       {/* Tabla */}
       <Card className="shadow-sm border-0">
-        <Card.Header style={{ backgroundColor: '#6366f1' }} className="text-white">
+        <Card.Header
+          style={{ backgroundColor: "#6366f1" }}
+          className="text-white"
+        >
           <h4 className="mb-0">🛒 Lista de Donaciones y Cálculo Final</h4>
         </Card.Header>
         <Card.Body>
           {filteredDonations.length === 0 ? (
-            <p className="text-muted">No hay donaciones que coincidan con la búsqueda.</p>
+            <p className="text-muted">
+              No hay donaciones que coincidan con la búsqueda.
+            </p>
           ) : (
             <div
               style={{
                 maxHeight: filteredDonations.length > 3 ? "300px" : "none",
                 overflowY: filteredDonations.length > 3 ? "auto" : "visible",
-                border: filteredDonations.length > 3 ? "1px solid #ccc" : "none",
+                border:
+                  filteredDonations.length > 3 ? "1px solid #ccc" : "none",
                 padding: filteredDonations.length > 3 ? "10px" : "0",
               }}
             >
