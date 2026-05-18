@@ -1,6 +1,6 @@
 // server/netlify/functions/updateDonation.js
 import mongoose from "mongoose";
-import Donation from "../models/Donation.js";
+import Donation from "../../models/Donation.js";
 
 let conn = null;
 async function connectDB() {

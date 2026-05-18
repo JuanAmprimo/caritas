@@ -1,6 +1,6 @@
 // server/netlify/functions/getLists.js
 import mongoose from "mongoose";
-import List from "../models/List.js";
+import List from "../../models/List.js";
 
 let conn = null;
 async function connectDB() {

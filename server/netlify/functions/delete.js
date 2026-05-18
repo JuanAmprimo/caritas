@@ -1,7 +1,7 @@
 // server/netlify/functions/delete.js
 import mongoose from "mongoose";
-import User from "../models/User.js";
-import List from "../models/List.js";
+import User from "../../models/User.js";
+import List from "../../models/List.js";
 
 let conn = null;
 async function connectDB() {

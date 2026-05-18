@@ -4,4 +4,9 @@
   publish = "dist"
 
 [functions]
-  directory = "server/netlify/functions"
+  directory = "../netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

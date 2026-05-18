@@ -2,7 +2,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import User from "../models/User.js";
+import User from "../../models/User.js";
 
 let conn = null;
 async function connectDB() {
@@ -15,7 +15,27 @@ async function connectDB() {
 export async function handler(event, context) {
   try {
     await connectDB();
-    const { email, password } = JSON.parse(event.body);
+
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: JSON.stringify({ error: "Método no permitido. Usa POST con JSON en el cuerpo." }) };
+    }
+
+    if (!event.body) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Falta el cuerpo de la solicitud. Envía email y password en JSON." }) };
+    }
+
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(event.body);
+    } catch (parseErr) {
+      return { statusCode: 400, body: JSON.stringify({ error: "JSON inválido en el cuerpo de la solicitud." }) };
+    }
+
+    const { email, password } = parsedBody;
+
+    if (!email || !password) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Email y password son obligatorios." }) };
+    }
 
     const user = await User.findOne({ email });
     if (!user) return { statusCode: 400, body: JSON.stringify({ error: "Usuario no encontrado" }) };

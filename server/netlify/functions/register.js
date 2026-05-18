@@ -1,7 +1,7 @@
 // server/netlify/functions/register.js
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import User from "../models/User.js";
+import User from "../../models/User.js";
 
 let conn = null;
 async function connectDB() {
