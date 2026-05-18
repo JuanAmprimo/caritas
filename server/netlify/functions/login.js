@@ -51,7 +51,7 @@ export async function handler(event, context) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Login exitoso", accessToken, refreshToken })
+      body: JSON.stringify({ message: "Login exitoso", accessToken, refreshToken, username: user.username, userId: user._id })
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };

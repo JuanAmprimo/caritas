@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Container, Card, Form, Button, Toast, ToastContainer } from "react-bootstrap";
 
-export default function Login({ setIsLoggedIn }) {
+export default function Login({ setIsLoggedIn, setUsername }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -40,6 +40,19 @@ export default function Login({ setIsLoggedIn }) {
 
         if (res.ok) {
           if (setIsLoggedIn) setIsLoggedIn(true);
+          if (data.accessToken) {
+            localStorage.setItem('accessToken', data.accessToken);
+          }
+          if (data.refreshToken) {
+            localStorage.setItem('refreshToken', data.refreshToken);
+          }
+          if (data.userId) {
+            localStorage.setItem('userId', data.userId);
+          }
+          if (setUsername && data.username) {
+            setUsername(data.username);
+            localStorage.setItem('username', data.username);
+          }
           setToastMessage("Login exitoso ✅. Bienvenido!");
           setToastVariant("success");
           setShowToast(true);

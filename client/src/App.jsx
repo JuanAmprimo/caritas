@@ -12,6 +12,7 @@ import './App.css';
 export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('accessToken'));
+  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
 
   return (
     <Router>
@@ -20,6 +21,7 @@ export default function App() {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           isLoggedIn={isLoggedIn}
+          username={username}
         />
 
         <div className="flex-grow-1 container mt-4">
@@ -29,7 +31,7 @@ export default function App() {
             <Route path="/calculator" element={<PriceCalculator searchTerm={searchTerm} />} />
 
             {/* Autenticación */}
-            <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
+            <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} setUsername={setUsername} />} />
             <Route path="/register" element={<Register />} />
 
             {/* Ruta por defecto */}

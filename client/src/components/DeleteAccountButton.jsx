@@ -8,18 +8,32 @@ export default function DeleteAccountButton() {
     }
 
     try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        alert("No se encontró el usuario. Vuelve a iniciar sesión.");
+        return;
+      }
+
       let token = localStorage.getItem("accessToken");
-      let res = await fetch("http://localhost:3001/api/auth/delete", {
+      let res = await fetch(`/.netlify/functions/delete`, {
         method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId })
       });
 
       // 🔹 Si el accessToken venció, lo renovamos
       if (res.status === 401) {
         token = await refreshAccessToken();
-        res = await fetch("http://localhost:3001/api/auth/delete", {
+        res = await fetch(`/.netlify/functions/delete`, {
           method: "DELETE",
-          headers: { "Authorization": `Bearer ${token}` }
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId })
         });
       }
 
@@ -28,6 +42,8 @@ export default function DeleteAccountButton() {
         alert(data.message);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken"); // 🔹 limpiar ambos tokens
+        localStorage.removeItem("username");
+        localStorage.removeItem("userId");
         window.location.href = "/register"; // 🔹 redirigir al registro
       } else {
         alert(data.error);

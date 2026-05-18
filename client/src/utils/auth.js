@@ -24,7 +24,7 @@ export async function refreshAccessToken() {
   const refreshToken = getRefreshToken();
   if (!refreshToken) throw new Error("No hay refresh token");
 
-  const res = await fetch("http://localhost:3001/api/auth/refresh", {
+  const res = await fetch("/.netlify/functions/refresh", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),

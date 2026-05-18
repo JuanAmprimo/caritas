@@ -4,7 +4,7 @@ import CaritasLogo from '../assets/caritas-logo.png';
 import { NavLink } from "react-router-dom";
 import DeleteAccountButton from "./DeleteAccountButton"; // 🔹 importar el botón
 
-export default function NavbarShop({ searchTerm, setSearchTerm }) {
+export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, username }) {
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -82,7 +82,7 @@ export default function NavbarShop({ searchTerm, setSearchTerm }) {
 
             {/* 🔹 Dropdown de Ingresar */}
             <NavDropdown
-              title={<><User size={22} className="me-1" /> Ingresar</>}
+              title={<><User size={22} className="me-1" /> {isLoggedIn ? username || 'Usuario' : 'Ingresar'}</>}
               id="login-dropdown"
               align="end"
               className="text-white nav-link-custom"
