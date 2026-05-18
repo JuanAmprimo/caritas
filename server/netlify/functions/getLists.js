@@ -5,11 +5,11 @@ import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
     const lists = await List.find({ userId });
     return { statusCode: 200, body: JSON.stringify(lists) };
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
 }

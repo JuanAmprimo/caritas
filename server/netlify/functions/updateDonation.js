@@ -5,8 +5,8 @@ import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
     const id = event.path.split("/").pop(); // obtiene el ID de la URL
     const data = JSON.parse(event.body);
     const donation = await Donation.findById(id);
@@ -19,6 +19,6 @@ export async function handler(event, context) {
     const updatedDonation = await Donation.findByIdAndUpdate(id, data, { new: true });
     return { statusCode: 200, body: JSON.stringify(updatedDonation) };
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
 }

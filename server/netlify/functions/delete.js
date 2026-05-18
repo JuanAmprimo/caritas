@@ -6,8 +6,8 @@ import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
 
     const user = await User.findById(userId);
     if (!user) {
@@ -19,6 +19,6 @@ export async function handler(event, context) {
 
     return { statusCode: 200, body: JSON.stringify({ message: "Cuenta eliminada permanentemente ✅" }) };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: "Error al eliminar la cuenta" }) };
+    return { statusCode: err.statusCode || 500, body: JSON.stringify({ error: err.message || "Error al eliminar la cuenta" }) };
   }
 }

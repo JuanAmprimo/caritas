@@ -5,8 +5,8 @@ import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
     const id = event.path.split("/").pop();
     const donation = await Donation.findById(id);
     if (!donation) {
@@ -18,6 +18,6 @@ export async function handler(event, context) {
     await Donation.findByIdAndDelete(id);
     return { statusCode: 200, body: JSON.stringify({ message: "Donación eliminada" }) };
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
 }

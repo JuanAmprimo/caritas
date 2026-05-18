@@ -5,8 +5,8 @@ import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
     const { title, fields, items } = JSON.parse(event.body);
 
     if (!title) {
@@ -17,6 +17,6 @@ export async function handler(event, context) {
     await newList.save();
     return { statusCode: 201, body: JSON.stringify(newList) };
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
 }

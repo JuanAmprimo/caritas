@@ -6,21 +6,19 @@ import { connectDB } from "./_db.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
-
     if (event.httpMethod !== "POST") {
-      return { statusCode: 405, body: JSON.stringify({ error: "Método no permitido. Usa POST con JSON en el cuerpo." }) };
+      return { statusCode: 405, body: JSON.stringify({ error: "Metodo no permitido. Usa POST con JSON en el cuerpo." }) };
     }
 
     if (!event.body) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Falta el cuerpo de la solicitud. Envía email y password en JSON." }) };
+      return { statusCode: 400, body: JSON.stringify({ error: "Falta el cuerpo de la solicitud. Envia email y password en JSON." }) };
     }
 
     let parsedBody;
     try {
       parsedBody = JSON.parse(event.body);
-    } catch (parseErr) {
-      return { statusCode: 400, body: JSON.stringify({ error: "JSON inválido en el cuerpo de la solicitud." }) };
+    } catch {
+      return { statusCode: 400, body: JSON.stringify({ error: "JSON invalido en el cuerpo de la solicitud." }) };
     }
 
     const { email, password } = parsedBody;
@@ -29,11 +27,25 @@ export async function handler(event, context) {
       return { statusCode: 400, body: JSON.stringify({ error: "Email y password son obligatorios." }) };
     }
 
+    if (!process.env.JWT_SECRET) {
+      const err = new Error("JWT_SECRET no esta configurada en Netlify");
+      err.statusCode = 500;
+      throw err;
+    }
+
+    if (!process.env.JWT_REFRESH_SECRET) {
+      const err = new Error("JWT_REFRESH_SECRET no esta configurada en Netlify");
+      err.statusCode = 500;
+      throw err;
+    }
+
+    await connectDB();
+
     const user = await User.findOne({ email });
     if (!user) return { statusCode: 400, body: JSON.stringify({ error: "Usuario no encontrado" }) };
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return { statusCode: 400, body: JSON.stringify({ error: "Contraseña incorrecta" }) };
+    if (!isMatch) return { statusCode: 400, body: JSON.stringify({ error: "Password incorrecta" }) };
 
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
     const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
@@ -43,9 +55,9 @@ export async function handler(event, context) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Login exitoso", accessToken, refreshToken, username: user.username, userId: user._id })
+      body: JSON.stringify({ message: "Login exitoso", accessToken, refreshToken, username: user.username, userId: user._id }),
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 500, body: JSON.stringify({ error: err.message }) };
   }
 }

@@ -13,13 +13,13 @@ const Item = mongoose.model("Item", ItemSchema);
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
     const data = JSON.parse(event.body);
     const newItem = new Item({ ...data, userId });
     await newItem.save();
     return { statusCode: 201, body: JSON.stringify(newItem) };
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
 }

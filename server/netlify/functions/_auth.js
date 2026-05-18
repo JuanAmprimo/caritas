@@ -18,6 +18,12 @@ export function requireAuth(event) {
     throw authError("Token requerido");
   }
 
+  if (!process.env.JWT_SECRET) {
+    const err = new Error("JWT_SECRET no esta configurada en Netlify");
+    err.statusCode = 500;
+    throw err;
+  }
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded.id;

@@ -5,8 +5,8 @@ import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
-    await connectDB();
     const userId = requireAuth(event);
+    await connectDB();
     const id = event.path.split("/").pop();
     const list = await List.findById(id);
     if (!list) {
@@ -18,6 +18,6 @@ export async function handler(event, context) {
     await List.findByIdAndDelete(id);
     return { statusCode: 200, body: JSON.stringify({ message: "Lista eliminada" }) };
   } catch (err) {
-    return { statusCode: 400, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
 }
