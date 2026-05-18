@@ -17,14 +17,12 @@ export default function PriceCalculator({ searchTerm }) {
 
   // 🔹 Traer donaciones del backend al cargar
   useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL;
-
     const fetchDonations = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/donations?userId=12345`, {
-          method: "GET",
-          credentials: "include", // 🔹 cookies
-        });
+        const res = await fetch(
+          `/.netlify/functions/getDonations?userId=12345`,
+          { method: "GET" }
+        );
 
         const data = await res.json();
         setDonations(Array.isArray(data) ? data : []);
@@ -60,18 +58,16 @@ export default function PriceCalculator({ searchTerm }) {
     try {
       let res;
       if (editingId) {
-        res = await fetch(`${API_URL}/api/donations/${editingId}`, {
+        res = await fetch(`/.netlify/functions/updateDonation/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
-          credentials: "include", // 🔹 cookies
         });
       } else {
-        res = await fetch(`${API_URL}/api/donations`, {
+        res = await fetch(`/.netlify/functions/createDonation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...formData, userId: "12345" }),
-          credentials: "include", // 🔹 cookies
         });
       }
 
@@ -80,7 +76,7 @@ export default function PriceCalculator({ searchTerm }) {
         setDonations(
           editingId
             ? donations.map((d) => (d._id === editingId ? data : d))
-            : [...donations, data],
+            : [...donations, data]
         );
         setEditingId(null);
         setFormData({
@@ -104,9 +100,8 @@ export default function PriceCalculator({ searchTerm }) {
 
   const deleteDonation = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/api/donations/${id}`, {
+      const res = await fetch(`/.netlify/functions/deleteDonation/${id}`, {
         method: "DELETE",
-        credentials: "include", // 🔹 cookies
       });
 
       if (res.ok) {
@@ -143,8 +138,8 @@ export default function PriceCalculator({ searchTerm }) {
     Object.values(d).some((val) =>
       String(val || "")
         .toLowerCase()
-        .includes((searchTerm || "").toLowerCase()),
-    ),
+        .includes((searchTerm || "").toLowerCase())
+    )
   );
 
   return (

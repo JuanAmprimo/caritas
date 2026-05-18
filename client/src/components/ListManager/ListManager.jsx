@@ -22,15 +22,12 @@ export default function ListManager({ searchTerm }) {
   const [newItem, setNewItem] = useState({});
   const [currentListId, setCurrentListId] = useState(null);
 
-  // 🔹 Traer listas desde MongoDB
+  // 🔹 Traer listas desde MongoDB (Netlify Functions)
   useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL;
-
     const fetchLists = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/lists`, {
+        const res = await fetch(`/.netlify/functions/getLists?userId=12345`, {
           method: "GET",
-          credentials: "include", // 🔹 cookies
         });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
@@ -79,14 +76,16 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    const API_URL = import.meta.env.VITE_API_URL;
-
     try {
-      const res = await fetch(`${API_URL}/api/lists`, {
+      const res = await fetch(`/.netlify/functions/createList`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: listTitle, fields, items }),
-        credentials: "include", // 🔹 cookies
+        body: JSON.stringify({
+          title: listTitle,
+          fields,
+          items,
+          userId: "12345",
+        }),
       });
 
       const data = await res.json();
@@ -102,11 +101,9 @@ export default function ListManager({ searchTerm }) {
   };
 
   const deleteList = async (id) => {
-    const API_URL = import.meta.env.VITE_API_URL;
     try {
-      const res = await fetch(`${API_URL}/api/lists/${id}`, {
+      const res = await fetch(`/.netlify/functions/deleteList/${id}`, {
         method: "DELETE",
-        credentials: "include", // 🔹 cookies
       });
 
       if (res.ok) {
@@ -132,7 +129,9 @@ export default function ListManager({ searchTerm }) {
 
     if (missingFields.length > 0) {
       alert(
-        `Completa todos los campos antes de agregar el item. Faltan: ${missingFields.map((f) => f.name).join(", ")}`,
+        `Completa todos los campos antes de agregar el item. Faltan: ${missingFields
+          .map((f) => f.name)
+          .join(", ")}`,
       );
       return;
     }
@@ -154,6 +153,7 @@ export default function ListManager({ searchTerm }) {
     setEditingItem(item);
     setShowEditItem(true);
   };
+
   const saveEditItem = () => {
     if (editingItem) {
       const updatedItems = items.map((item) =>
@@ -173,11 +173,9 @@ export default function ListManager({ searchTerm }) {
   );
 
   const loadList = async (list) => {
-    const API_URL = import.meta.env.VITE_API_URL;
     try {
-      const res = await fetch(`${API_URL}/api/lists/${list._id}`, {
+      const res = await fetch(`/.netlify/functions/getListById/${list._id}`, {
         method: "GET",
-        credentials: "include", // 🔹 cookies
       });
       const data = await res.json();
       setFields(data.fields || []);
@@ -190,28 +188,26 @@ export default function ListManager({ searchTerm }) {
   };
 
   const updateList = async () => {
-    const API_URL = import.meta.env.VITE_API_URL;
     try {
       let res;
       if (currentListId) {
         // 🔹 Actualizar lista existente
-        res = await fetch(`${API_URL}/api/lists/${currentListId}`, {
+        res = await fetch(`/.netlify/functions/updateList/${currentListId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: listTitle, fields, items }),
-          credentials: "include", // 🔹 cookies
         });
       } else {
         // 🔹 Crear lista nueva automáticamente
-        res = await fetch(`${API_URL}/api/lists`, {
+        res = await fetch(`/.netlify/functions/createList`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: listTitle || "Lista sin nombre",
             fields,
             items,
+            userId: "12345",
           }),
-          credentials: "include", // 🔹 cookies
         });
       }
 

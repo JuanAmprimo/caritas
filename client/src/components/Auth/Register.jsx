@@ -36,7 +36,7 @@ export default function Register() {
     e.preventDefault();
     if (validateForm()) {
       try {
-        const res = await fetch("http://localhost:3001/api/auth/register", {
+        const res = await fetch(`/.netlify/functions/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData)

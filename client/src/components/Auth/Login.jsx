@@ -10,8 +10,6 @@ export default function Login({ setIsLoggedIn }) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState("success");
 
-  const API_URL = import.meta.env.VITE_API_URL; // 🔹 toma la URL según el entorno
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -33,11 +31,10 @@ export default function Login({ setIsLoggedIn }) {
     e.preventDefault();
     if (validateForm()) {
       try {
-        const res = await fetch(`${API_URL}/api/auth/login`, {
+        const res = await fetch(`/.netlify/functions/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
-          credentials: "include" // 🔹 manda y recibe cookies
         });
         const data = await res.json();
 
