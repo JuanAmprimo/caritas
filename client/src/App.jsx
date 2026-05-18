@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import NavbarShop from './components/NavbarShop';
 import Footer from './components/Footer';
 import ListManager from './components/ListManager/ListManager';
@@ -22,20 +22,67 @@ export default function App() {
           setSearchTerm={setSearchTerm}
           isLoggedIn={isLoggedIn}
           username={username}
+          setIsLoggedIn={setIsLoggedIn}
+          setUsername={setUsername}
         />
 
         <div className="flex-grow-1 container mt-4">
           <Routes>
             {/* Rutas principales */}
-            <Route path="/lists" element={<ListManager searchTerm={searchTerm} />} />
-            <Route path="/calculator" element={<PriceCalculator searchTerm={searchTerm} />} />
+            <Route
+              path="/lists"
+              element={
+                isLoggedIn ? (
+                  <ListManager searchTerm={searchTerm} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/calculator"
+              element={
+                isLoggedIn ? (
+                  <PriceCalculator searchTerm={searchTerm} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
 
             {/* Autenticación */}
-            <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} setUsername={setUsername} />} />
-            <Route path="/register" element={<Register />} />
+            <Route
+              path="/login"
+              element={
+                !isLoggedIn ? (
+                  <Login setIsLoggedIn={setIsLoggedIn} setUsername={setUsername} />
+                ) : (
+                  <Navigate to="/lists" replace />
+                )
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                !isLoggedIn ? (
+                  <Register />
+                ) : (
+                  <Navigate to="/lists" replace />
+                )
+              }
+            />
 
             {/* Ruta por defecto */}
-            <Route path="/" element={<ListManager searchTerm={searchTerm} />} />
+            <Route
+              path="/"
+              element={
+                isLoggedIn ? (
+                  <ListManager searchTerm={searchTerm} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
           </Routes>
         </div>
 

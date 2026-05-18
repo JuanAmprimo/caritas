@@ -3,7 +3,7 @@ import { refreshAccessToken } from "../utils/auth.js"; // asegúrate de importar
 
 export default function DeleteAccountButton() {
   const deleteAccount = async () => {
-    if (!window.confirm("¿Seguro que quieres eliminar tu cuenta? Esta acción es irreversible.")) {
+    if (!window.confirm("¡Atención! Esto eliminará permanentemente tu cuenta y todos tus datos. ¿Deseas continuar?")) {
       return;
     }
 

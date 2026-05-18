@@ -1,10 +1,25 @@
 import { Container, Nav, Navbar, Form, Button, NavDropdown } from 'react-bootstrap';
 import { Search, List, Calculator, User } from 'lucide-react';
 import CaritasLogo from '../assets/caritas-logo.png'; 
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import DeleteAccountButton from "./DeleteAccountButton"; // 🔹 importar el botón
 
-export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, username }) {
+export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, username, setIsLoggedIn, setUsername }) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (!window.confirm("¿Deseas cerrar sesión?")) return;
+
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userId');
+
+    setSearchTerm('');
+    setIsLoggedIn(false);
+    setUsername('');
+    navigate('/login');
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -88,10 +103,11 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
               className="text-white nav-link-custom"
               renderMenuOnMount={true}
             >
-              <NavDropdown.Item as={NavLink} to="/login">Iniciar Sesión</NavDropdown.Item>
-              <NavDropdown.Item as={NavLink} to="/register">Registrarse</NavDropdown.Item>
-              <NavDropdown.Divider />
-              <DeleteAccountButton />
+              {!isLoggedIn && <NavDropdown.Item as={NavLink} to="/login">Iniciar Sesión</NavDropdown.Item>}
+              {!isLoggedIn && <NavDropdown.Item as={NavLink} to="/register">Registrarse</NavDropdown.Item>}
+              {isLoggedIn && <NavDropdown.Item onClick={handleLogout}>Cerrar Sesión</NavDropdown.Item>}
+              {isLoggedIn && <NavDropdown.Divider />}
+              {isLoggedIn && <DeleteAccountButton />}
             </NavDropdown>
 
 
