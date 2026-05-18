@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
 
 const DonationSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
   size: String,
-  quantity: Number,
+  quantity: { type: Number, default: 1 },
   description: String,
   image: String,
-  userId: String // cada usuario ve sus propias donaciones
+  userId: { type: String, required: true }
 });
 
 export default mongoose.model("Donation", DonationSchema);
