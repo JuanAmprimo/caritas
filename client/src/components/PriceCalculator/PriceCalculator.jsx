@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Container, Card } from "react-bootstrap";
+import { apiFetch } from "../../utils/auth.js";
 import DonationForm from "./DonationForm";
 import DonationTable from "./DonationTable";
 
@@ -19,11 +20,7 @@ export default function PriceCalculator({ searchTerm }) {
   useEffect(() => {
     const fetchDonations = async () => {
       try {
-        const res = await fetch(
-          `/.netlify/functions/getDonations?userId=12345`,
-          { method: "GET" }
-        );
-
+        const res = await apiFetch(`/.netlify/functions/getDonations`, { method: "GET" });
         const data = await res.json();
         setDonations(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -58,16 +55,16 @@ export default function PriceCalculator({ searchTerm }) {
     try {
       let res;
       if (editingId) {
-        res = await fetch(`/.netlify/functions/updateDonation/${editingId}`, {
+        res = await apiFetch(`/.netlify/functions/updateDonation/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
       } else {
-        res = await fetch(`/.netlify/functions/createDonation`, {
+        res = await apiFetch(`/.netlify/functions/createDonation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...formData, userId: "12345" }),
+          body: JSON.stringify(formData),
         });
       }
 
@@ -100,7 +97,7 @@ export default function PriceCalculator({ searchTerm }) {
 
   const deleteDonation = async (id) => {
     try {
-      const res = await fetch(`/.netlify/functions/deleteDonation/${id}`, {
+      const res = await apiFetch(`/.netlify/functions/deleteDonation/${id}`, {
         method: "DELETE",
       });
 

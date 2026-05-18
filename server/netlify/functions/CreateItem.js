@@ -1,5 +1,7 @@
 // server/netlify/functions/createItem.js
 import mongoose from "mongoose";
+import { connectDB } from "./_db.js";
+import { requireAuth } from "./_auth.js";
 
 const ItemSchema = new mongoose.Schema({
   name: String,
@@ -9,17 +11,12 @@ const ItemSchema = new mongoose.Schema({
 });
 const Item = mongoose.model("Item", ItemSchema);
 
-let conn = null;
-async function connectDB() {
-  if (!conn) conn = await mongoose.connect(process.env.MONGO_URI);
-  return conn;
-}
-
 export async function handler(event, context) {
   try {
     await connectDB();
+    const userId = requireAuth(event);
     const data = JSON.parse(event.body);
-    const newItem = new Item(data);
+    const newItem = new Item({ ...data, userId });
     await newItem.save();
     return { statusCode: 201, body: JSON.stringify(newItem) };
   } catch (err) {

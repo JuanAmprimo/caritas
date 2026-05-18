@@ -6,7 +6,6 @@ import AddFieldModal from "./AddFieldModal";
 import EditItemModal from "./EditItemModal";
 import ItemForm from "./ItemForm";
 import ItemTable from "./ItemTable";
-import { refreshAccessToken } from "../../utils/auth.js";
 import { apiFetch } from "../../utils/auth.js";
 
 export default function ListManager({ searchTerm }) {
@@ -26,9 +25,7 @@ export default function ListManager({ searchTerm }) {
   useEffect(() => {
     const fetchLists = async () => {
       try {
-        const res = await fetch(`/.netlify/functions/getLists?userId=12345`, {
-          method: "GET",
-        });
+        const res = await apiFetch(`/.netlify/functions/getLists`, { method: "GET" });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
           setLists(data);
@@ -77,14 +74,13 @@ export default function ListManager({ searchTerm }) {
     }
 
     try {
-      const res = await fetch(`/.netlify/functions/createList`, {
+      const res = await apiFetch(`/.netlify/functions/createList`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: listTitle,
           fields,
           items,
-          userId: "12345",
         }),
       });
 
@@ -102,7 +98,7 @@ export default function ListManager({ searchTerm }) {
 
   const deleteList = async (id) => {
     try {
-      const res = await fetch(`/.netlify/functions/deleteList/${id}`, {
+      const res = await apiFetch(`/.netlify/functions/deleteList/${id}`, {
         method: "DELETE",
       });
 
@@ -174,9 +170,7 @@ export default function ListManager({ searchTerm }) {
 
   const loadList = async (list) => {
     try {
-      const res = await fetch(`/.netlify/functions/getListById/${list._id}`, {
-        method: "GET",
-      });
+      const res = await apiFetch(`/.netlify/functions/getListById/${list._id}`, { method: "GET" });
       const data = await res.json();
       setFields(data.fields || []);
       setItems(data.items || []);
@@ -192,21 +186,20 @@ export default function ListManager({ searchTerm }) {
       let res;
       if (currentListId) {
         // 🔹 Actualizar lista existente
-        res = await fetch(`/.netlify/functions/updateList/${currentListId}`, {
+        res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: listTitle, fields, items }),
         });
       } else {
         // 🔹 Crear lista nueva automáticamente
-        res = await fetch(`/.netlify/functions/createList`, {
+        res = await apiFetch(`/.netlify/functions/createList`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: listTitle || "Lista sin nombre",
             fields,
             items,
-            userId: "12345",
           }),
         });
       }

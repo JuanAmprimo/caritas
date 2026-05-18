@@ -8,12 +8,6 @@ export default function DeleteAccountButton() {
     }
 
     try {
-      const userId = localStorage.getItem("userId");
-      if (!userId) {
-        alert("No se encontró el usuario. Vuelve a iniciar sesión.");
-        return;
-      }
-
       let token = localStorage.getItem("accessToken");
       let res = await fetch(`/.netlify/functions/delete`, {
         method: "DELETE",
@@ -21,7 +15,6 @@ export default function DeleteAccountButton() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ userId })
       });
 
       // 🔹 Si el accessToken venció, lo renovamos
@@ -33,7 +26,6 @@ export default function DeleteAccountButton() {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ userId })
         });
       }
 

@@ -1,17 +1,12 @@
 // server/netlify/functions/getDonations.js
-import mongoose from "mongoose";
 import Donation from "../../models/Donation.js";
-
-let conn = null;
-async function connectDB() {
-  if (!conn) conn = await mongoose.connect(process.env.MONGO_URI);
-  return conn;
-}
+import { connectDB } from "./_db.js";
+import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
     await connectDB();
-    const userId = event.queryStringParameters.userId;
+    const userId = requireAuth(event);
     const donations = await Donation.find({ userId });
     return { statusCode: 200, body: JSON.stringify(donations) };
   } catch (err) {

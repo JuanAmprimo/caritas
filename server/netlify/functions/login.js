@@ -1,16 +1,8 @@
 // server/netlify/functions/login.js
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
 import User from "../../models/User.js";
-
-let conn = null;
-async function connectDB() {
-  if (!conn) {
-    conn = await mongoose.connect(process.env.MONGO_URI);
-  }
-  return conn;
-}
+import { connectDB } from "./_db.js";
 
 export async function handler(event, context) {
   try {

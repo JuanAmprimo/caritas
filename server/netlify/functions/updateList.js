@@ -1,18 +1,21 @@
 // server/netlify/functions/updateList.js
-import mongoose from "mongoose";
 import List from "../../models/List.js";
-
-let conn = null;
-async function connectDB() {
-  if (!conn) conn = await mongoose.connect(process.env.MONGO_URI);
-  return conn;
-}
+import { connectDB } from "./_db.js";
+import { requireAuth } from "./_auth.js";
 
 export async function handler(event, context) {
   try {
     await connectDB();
+    const userId = requireAuth(event);
     const id = event.path.split("/").pop();
     const data = JSON.parse(event.body);
+    const list = await List.findById(id);
+    if (!list) {
+      return { statusCode: 404, body: JSON.stringify({ error: "Lista no encontrada" }) };
+    }
+    if (list.userId.toString() !== userId.toString()) {
+      return { statusCode: 403, body: JSON.stringify({ error: "No tienes permiso para modificar esta lista" }) };
+    }
     const updated = await List.findByIdAndUpdate(id, data, { new: true });
     return { statusCode: 200, body: JSON.stringify(updated) };
   } catch (err) {
