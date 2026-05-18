@@ -29,4 +29,3 @@ dist-ssr
 # Environment files
 server/.env
 
-netlify/functions
