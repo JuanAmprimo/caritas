@@ -25,7 +25,7 @@ export function requireAuth(event) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     return decoded.id;
   } catch {
     throw authError();

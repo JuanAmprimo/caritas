@@ -1,4 +1,5 @@
 // server/netlify/functions/deleteList.js
+import mongoose from "mongoose";
 import List from "../../models/List.js";
 import { connectDB } from "./_db.js";
 import { requireAuth } from "./_auth.js";
@@ -8,6 +9,11 @@ export async function handler(event, context) {
     const userId = requireAuth(event);
     await connectDB();
     const id = event.path.split("/").pop();
+
+    if (!mongoose.isValidObjectId(id)) {
+      return { statusCode: 400, body: JSON.stringify({ error: "ID de lista inválido" }) };
+    }
+
     const list = await List.findById(id);
     if (!list) {
       return { statusCode: 404, body: JSON.stringify({ error: "Lista no encontrada" }) };

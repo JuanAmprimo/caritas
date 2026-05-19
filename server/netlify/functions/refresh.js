@@ -3,9 +3,19 @@ import jwt from "jsonwebtoken";
 import User from "../../models/User.js";
 import { connectDB } from "./_db.js";
 
+function parseCookie(cookieHeader, name) {
+  if (!cookieHeader) return null;
+  return cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split("=")[1] || null;
+}
+
 export async function handler(event, context) {
   try {
-    const { refreshToken } = JSON.parse(event.body || "{}");
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie || "";
+    const refreshToken = parseCookie(cookieHeader, "refreshToken");
     if (!refreshToken) {
       return { statusCode: 401, body: JSON.stringify({ error: "Refresh token requerido" }) };
     }
@@ -22,7 +32,7 @@ export async function handler(event, context) {
       throw err;
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ["HS256"] });
     await connectDB();
     const user = await User.findById(decoded.id);
     if (!user || user.refreshToken !== refreshToken) {

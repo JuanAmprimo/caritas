@@ -34,6 +34,7 @@ export default function Login({ setIsLoggedIn, setUsername }) {
         const res = await fetch(`/.netlify/functions/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
           body: JSON.stringify(formData),
         });
         const data = await res.json();
@@ -42,9 +43,6 @@ export default function Login({ setIsLoggedIn, setUsername }) {
           if (setIsLoggedIn) setIsLoggedIn(true);
           if (data.accessToken) {
             localStorage.setItem('accessToken', data.accessToken);
-          }
-          if (data.refreshToken) {
-            localStorage.setItem('refreshToken', data.refreshToken);
           }
           if (data.userId) {
             localStorage.setItem('userId', data.userId);

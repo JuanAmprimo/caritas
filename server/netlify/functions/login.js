@@ -53,9 +53,23 @@ export async function handler(event, context) {
     user.refreshToken = refreshToken;
     await user.save();
 
+    const cookieOptions = [
+      `refreshToken=${refreshToken}`,
+      "HttpOnly",
+      "Path=/",
+      "Max-Age=604800",
+      "SameSite=Strict",
+    ];
+    if (process.env.NODE_ENV === "production") {
+      cookieOptions.push("Secure");
+    }
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Login exitoso", accessToken, refreshToken, username: user.username, userId: user._id }),
+      headers: {
+        "Set-Cookie": cookieOptions.join("; "),
+      },
+      body: JSON.stringify({ message: "Login exitoso", accessToken, username: user.username, userId: user._id }),
     };
   } catch (err) {
     return { statusCode: err.statusCode || 500, body: JSON.stringify({ error: err.message }) };

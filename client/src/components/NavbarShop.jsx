@@ -3,15 +3,24 @@ import { Search, List, Calculator, User } from 'lucide-react';
 import CaritasLogo from '../assets/caritas-logo.png'; 
 import { NavLink, useNavigate } from "react-router-dom";
 import DeleteAccountButton from "./DeleteAccountButton"; // 🔹 importar el botón
+import { apiFetch, clearTokens } from "../utils/auth.js";
 
 export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, username, setIsLoggedIn, setUsername }) {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!window.confirm("¿Deseas cerrar sesión?")) return;
 
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    try {
+      await apiFetch(`/.netlify/functions/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    }
+
+    clearTokens();
     localStorage.removeItem('username');
     localStorage.removeItem('userId');
 

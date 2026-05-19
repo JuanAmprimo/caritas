@@ -7,7 +7,17 @@ export async function handler(event, context) {
   try {
     const userId = requireAuth(event);
     await connectDB();
-    const { title, fields, items } = JSON.parse(event.body);
+
+    let parsedBody = {};
+    try {
+      parsedBody = JSON.parse(event.body || "{}");
+    } catch {
+      return { statusCode: 400, body: JSON.stringify({ error: "JSON invalido en el cuerpo de la solicitud." }) };
+    }
+
+    const title = String(parsedBody.title || "").trim();
+    const fields = Array.isArray(parsedBody.fields) ? parsedBody.fields : [];
+    const items = Array.isArray(parsedBody.items) ? parsedBody.items : [];
 
     if (!title) {
       return { statusCode: 400, body: JSON.stringify({ error: "El título de la lista es obligatorio." }) };

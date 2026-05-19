@@ -4,7 +4,9 @@ const REFRESH_TOKEN_KEY = "refreshToken";
 
 export function saveTokens({ accessToken, refreshToken }) {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
 }
 
 export function clearTokens() {
@@ -16,18 +18,11 @@ export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
-export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
 export async function refreshAccessToken() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) throw new Error("No hay refresh token");
-
   const res = await fetch("/.netlify/functions/refresh", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    credentials: "same-origin",
   });
 
   const data = await res.json();
@@ -51,6 +46,7 @@ export async function apiFetch(url, options = {}) {
   let res = await fetch(url, {
     ...options,
     headers,
+    credentials: "same-origin",
   });
 
   if (res.status === 401) {
@@ -62,8 +58,9 @@ export async function apiFetch(url, options = {}) {
           ...options.headers,
           Authorization: `Bearer ${token}`,
         },
+        credentials: "same-origin",
       });
-    } catch (err) {
+    } catch {
       alert("Tu sesión expiró o hubo un error al renovar. Volvé a iniciar sesión.");
       window.location.href = "/login";
     }

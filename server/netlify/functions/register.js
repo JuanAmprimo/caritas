@@ -9,10 +9,27 @@ export async function handler(event, context) {
       return { statusCode: 405, body: JSON.stringify({ error: "Metodo no permitido. Usa POST con JSON en el cuerpo." }) };
     }
 
-    const { username, email, password } = JSON.parse(event.body || "{}");
+    let parsedBody = {};
+    try {
+      parsedBody = JSON.parse(event.body || "{}");
+    } catch {
+      return { statusCode: 400, body: JSON.stringify({ error: "JSON invalido en el cuerpo de la solicitud." }) };
+    }
+
+    const username = String(parsedBody.username || "").trim();
+    const email = String(parsedBody.email || "").trim().toLowerCase();
+    const password = String(parsedBody.password || "");
 
     if (!username || !email || !password) {
       return { statusCode: 400, body: JSON.stringify({ error: "Todos los campos son obligatorios" }) };
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Formato de email inválido" }) };
+    }
+
+    if (password.length < 6) {
+      return { statusCode: 400, body: JSON.stringify({ error: "La contraseña debe tener al menos 6 caracteres" }) };
     }
 
     await connectDB();

@@ -1,5 +1,5 @@
 import { Button } from "react-bootstrap";
-import { refreshAccessToken } from "../utils/auth.js"; // asegúrate de importar
+import { apiFetch, clearTokens } from "../utils/auth.js";
 
 export default function DeleteAccountButton() {
   const deleteAccount = async () => {
@@ -8,35 +8,20 @@ export default function DeleteAccountButton() {
     }
 
     try {
-      let token = localStorage.getItem("accessToken");
-      let res = await fetch(`/.netlify/functions/delete`, {
+      const res = await apiFetch(`/.netlify/functions/delete`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
       });
-
-      // 🔹 Si el accessToken venció, lo renovamos
-      if (res.status === 401) {
-        token = await refreshAccessToken();
-        res = await fetch(`/.netlify/functions/delete`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-        });
-      }
 
       const data = await res.json();
       if (res.ok) {
         alert(data.message);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken"); // 🔹 limpiar ambos tokens
+        clearTokens();
         localStorage.removeItem("username");
         localStorage.removeItem("userId");
-        window.location.href = "/register"; // 🔹 redirigir al registro
+        window.location.href = "/register";
       } else {
         alert(data.error);
       }
