@@ -66,5 +66,28 @@ export async function apiFetch(url, options = {}) {
     }
   }
 
+  // Detectar respuesta que indica que el usuario no existe (por ejemplo, cuenta eliminada)
+  try {
+    const cloned = res.clone();
+    const body = await cloned.json().catch(() => null);
+    const msg = (body && (body.error || body.message || "")) || "";
+
+    const indicatesMissingUser =
+      res.status === 404 ||
+      res.status === 410 ||
+      /user|usuario|no encontrado|not found/i.test(msg);
+
+    if (indicatesMissingUser) {
+      clearTokens();
+      localStorage.removeItem("username");
+      localStorage.removeItem("userId");
+      alert("Tu cuenta no fue encontrada. Se cerrará la sesión.");
+      window.location.href = "/register";
+      // No retornamos nada porque ya navegamos fuera; esto evita que el frontend siga en estado inválido.
+    }
+  } catch (err) {
+    // Si no se pudo parsear JSON o ocurrió un error, ignoramos y devolvemos la respuesta original.
+  }
+
   return res;
 }
