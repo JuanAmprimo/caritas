@@ -5,7 +5,8 @@ import ListManager from './components/ListManager/ListManager';
 import PriceCalculator from './components/PriceCalculator/PriceCalculator';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiFetch, clearTokens } from './utils/auth.js';
 import './index.css';
 import './App.css';
 
@@ -13,6 +14,36 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('accessToken'));
   const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let cancelled = false;
+
+    const checkUserExists = async () => {
+      try {
+        const res = await apiFetch(`/.netlify/functions/getUser`, { method: 'GET' });
+        if (!res) return; // apiFetch may redirect
+
+        if (res.status === 404) {
+          clearTokens();
+          localStorage.removeItem('username');
+          localStorage.removeItem('userId');
+          setIsLoggedIn(false);
+          setUsername('');
+          alert('Tu cuenta fue eliminada. Se cerrará la sesión.');
+          window.location.href = '/register';
+        }
+      } catch (err) {
+        console.error('Error verificando usuario:', err);
+      }
+    };
+
+    // Ejecutar al montar y luego cada 5 segundos
+    checkUserExists();
+    const intervalId = setInterval(checkUserExists, 5000);
+    return () => clearInterval(intervalId);
+  }, [isLoggedIn, setIsLoggedIn, setUsername]);
 
   return (
     <Router>
