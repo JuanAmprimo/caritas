@@ -3,7 +3,7 @@ import { Container, Card, Form, Button, Toast, ToastContainer } from "react-boot
 import { Link } from "react-router-dom";
 
 export default function Register() {
-  const [formData, setFormData] = useState({ username: "", email: "", password: "", confirmPassword: "" });
+  const [formData, setFormData] = useState({ username: "", email: "", confirmEmail: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
   const [showToast, setShowToast] = useState(false);       // 🔹 estado para mostrar el toast
   const [toastMessage, setToastMessage] = useState("");    // 🔹 mensaje del toast
@@ -22,11 +22,16 @@ export default function Register() {
     if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Formato de email inválido";
     }
-    if (!formData.password || formData.password.length < 6) {
-      newErrors.password = "La contraseña debe tener al menos 6 caracteres";
+    if (!formData.confirmEmail || formData.confirmEmail !== formData.email) {
+      newErrors.confirmEmail = "Los emails no coinciden";
     }
+    // password length will be validated by the strength regex below
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Las contraseñas no coinciden";
+    }
+    // Password strength: min 8, one uppercase, one number, one symbol
+    if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(formData.password)) {
+      newErrors.password = "La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, un número y un símbolo";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -36,10 +41,20 @@ export default function Register() {
     e.preventDefault();
     if (validateForm()) {
       try {
+        // Attempt to get recaptcha token if grecaptcha is available
+        let recaptchaToken = '';
+        try {
+          if (window.grecaptcha && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
+            recaptchaToken = await window.grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'register' });
+          }
+        } catch (ignored) {}
+
+        const payload = { username: formData.username, email: formData.email.trim().toLowerCase(), confirmEmail: formData.confirmEmail ? formData.confirmEmail.trim().toLowerCase() : formData.email.trim().toLowerCase(), password: formData.password, recaptchaToken };
+
         const res = await fetch(`/.netlify/functions/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
 
@@ -94,6 +109,20 @@ export default function Register() {
                 isInvalid={!!errors.email}
               />
               <Form.Control.Feedback type="invalid">{errors.email}</Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="confirmEmail">
+              <Form.Label>Confirmar Email</Form.Label>
+              <Form.Control
+                type="email"
+                name="confirmEmail"
+                value={formData.confirmEmail}
+                onChange={handleChange}
+                placeholder="Repite tu email"
+                required
+                isInvalid={!!errors.confirmEmail}
+              />
+              <Form.Control.Feedback type="invalid">{errors.confirmEmail}</Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-3" controlId="password">
