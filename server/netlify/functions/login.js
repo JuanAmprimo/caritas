@@ -76,11 +76,6 @@ export async function handler(event, context) {
       return { statusCode: 403, body: JSON.stringify({ error: "Esta cuenta está bloqueada." }) };
     }
 
-    if (!user.isVerified) {
-      await Log.create({ ip, email, action: 'login', success: false, reason: 'not_verified' });
-      return { statusCode: 403, body: JSON.stringify({ error: "La cuenta no está verificada. Revisa tu email." }) };
-    }
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       await Log.create({ ip, email, action: 'login', success: false, reason: 'bad_password' });

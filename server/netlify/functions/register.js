@@ -1,7 +1,5 @@
 // server/netlify/functions/register.js
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
-import nodemailer from "nodemailer";
 import User from "../../models/User.js";
 import Log from "../../models/Log.js";
 import { connectDB } from "./_db.js";
@@ -75,34 +73,11 @@ export async function handler(event, context) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Create verification token
-    const verificationToken = crypto.randomBytes(24).toString('hex');
-    const newUser = new User({ username, email, password: hashedPassword, isVerified: false, verificationToken });
+    const newUser = new User({ username, email, password: hashedPassword });
     try {
       await newUser.save();
-
-      // Send verification email if SMTP configured
-      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.APP_URL) {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT) || 587,
-          secure: false,
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-        });
-
-        const verifyUrl = `${process.env.APP_URL}/.netlify/functions/verifyEmail?token=${verificationToken}`;
-        await transporter.sendMail({
-          from: process.env.SMTP_FROM || process.env.SMTP_USER,
-          to: email,
-          subject: 'Verifica tu cuenta',
-          text: `Por favor verifica tu cuenta visitando: ${verifyUrl}`,
-          html: `<p>Por favor verifica tu cuenta haciendo clic <a href="${verifyUrl}">aquí</a>.</p>`
-        });
-      }
-
       await Log.create({ ip, email, action: 'register', success: true });
-
-      return { statusCode: 201, body: JSON.stringify({ message: "Usuario registrado con exito. Revisa tu email para verificar la cuenta." }) };
+      return { statusCode: 201, body: JSON.stringify({ message: "Usuario registrado con exito." }) };
     } catch (saveErr) {
       // Manejar error de clave única en Mongo (email duplicado)
       if (saveErr && saveErr.code === 11000) {
