@@ -2,7 +2,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
-import fetch from "node-fetch";
 import User from "../../models/User.js";
 import Log from "../../models/Log.js";
 import { connectDB } from "./_db.js";

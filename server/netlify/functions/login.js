@@ -1,7 +1,6 @@
 // server/netlify/functions/login.js
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import fetch from "node-fetch";
 import User from "../../models/User.js";
 import Log from "../../models/Log.js";
 import { connectDB } from "./_db.js";
