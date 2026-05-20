@@ -308,6 +308,41 @@ export default function ListManager({ searchTerm }) {
         }
 
         return data;
+      } else if (res.status === 404 && currentListId) {
+        // Lista no encontrada en backend: si es autoguardado, no intentamos crearla remotamente;
+        // simplemente limpiamos currentListId y mantenemos el borrador local.
+        if (!allowCreate) {
+          setCurrentListId(null);
+          setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
+          return null;
+        }
+
+        // Si permitimos crear (guardado manual), intentamos crear la lista en su lugar.
+        try {
+          const createRes = await apiFetch(`/.netlify/functions/createList`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: listTitle.trim() || "Lista sin nombre", fields, items, draftKey }),
+          });
+          const createData = await createRes.json();
+          if (createRes.ok) {
+            setLists((prev) => [...prev, createData]);
+            setCurrentListId(createData._id);
+            ignoreNextAutoSave.current = true;
+            setAutoSaveStatus(showAlerts ? "Lista guardada ✅" : "Guardado automáticamente");
+            if (showAlerts) alert("Lista guardada con éxito ✅");
+            return createData;
+          } else {
+            if (showAlerts) alert(createData.error || "Error al guardar la lista");
+            setAutoSaveStatus("Error al guardar");
+            return null;
+          }
+        } catch (err2) {
+          console.error("Error creando lista tras 404:", err2);
+          setAutoSaveStatus("Error al guardar");
+          if (showAlerts) alert("Error al guardar la lista");
+          return null;
+        }
       } else {
         if (showAlerts) {
           alert(data.error || "Error al guardar la lista");
