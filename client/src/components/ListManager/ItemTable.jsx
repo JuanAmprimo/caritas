@@ -1,11 +1,7 @@
-import { Table, Button } from 'react-bootstrap';
-import { Edit2, Trash2 } from 'lucide-react';
-import  '/src/ItemTable.css';
-
 import { useState } from 'react';
 import { Table, Button } from 'react-bootstrap';
 import { Edit2, Trash2 } from 'lucide-react';
-import  '/src/ItemTable.css';
+import '/src/ItemTable.css';
 
 export default function ItemTable({ fields, items, openEditItem, deleteItem, moveItem }) {
   const [dragOverIndex, setDragOverIndex] = useState(null);
