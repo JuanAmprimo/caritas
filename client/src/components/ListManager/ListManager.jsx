@@ -24,6 +24,7 @@ export default function ListManager({ searchTerm }) {
   const [currentListId, setCurrentListId] = useState(null);
   const [draftKey, setDraftKey] = useState(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
+  const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
 
   const saveTimer = useRef(null);
   const isLoadingList = useRef(false);
@@ -122,6 +123,14 @@ export default function ListManager({ searchTerm }) {
       setNewFieldName("");
       setShowAddField(false);
     }
+  };
+
+  const moveField = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const updatedFields = [...fields];
+    const [movedField] = updatedFields.splice(fromIndex, 1);
+    updatedFields.splice(toIndex, 0, movedField);
+    setFields(updatedFields);
   };
 
   const removeField = (fieldId) => {
@@ -322,10 +331,14 @@ export default function ListManager({ searchTerm }) {
             <Col>
               <h5>Campos de la Lista</h5>
               <div className="d-flex flex-wrap gap-2 mb-3">
-                {fields.map((field) => (
+                {fields.map((field, index) => (
                   <FieldBadge
                     key={field.id}
                     field={field}
+                    index={index}
+                    moveField={moveField}
+                    dragOverIndex={dragOverFieldIndex}
+                    setDragOverIndex={setDragOverFieldIndex}
                     removeField={removeField}
                   />
                 ))}

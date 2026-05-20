@@ -34,6 +34,11 @@
   cursor: grabbing;
 }
 
+.badge.drag-over-field {
+  background-color: #cfe2ff !important;
+  border: 2px dashed #3b82f6;
+}
+
 .btn-edit {
   background-color: #f59e0b !important; /* naranja */
   border-color: #f59e0b !important;
