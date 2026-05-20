@@ -365,7 +365,7 @@ export default function ListManager({ searchTerm }) {
           {/* Tabla Items */}
           <div
             style={{
-              height: "230px",
+              height: "300px",
               overflowY: filteredItems.length > 0 ? "scroll" : "visible",
               border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
               padding: filteredItems.length > 0 ? "10px" : "0",

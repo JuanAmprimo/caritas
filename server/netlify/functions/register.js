@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import User from "../../models/User.js";
 import Log from "../../models/Log.js";
 import { connectDB } from "./_db.js";
+import { checkRateLimit } from "../../middleware/rateLimit.js";
 
 export async function handler(event, context) {
   try {
@@ -40,9 +41,9 @@ export async function handler(event, context) {
 
     await connectDB();
 
-    // Rate limiting (simple in-memory per-IP, per-minute)
+    // Rate limiting (shared)
     const ip = (event.headers && (event.headers['x-forwarded-for'] || event.headers['client-ip'] || event.headers['x-nf-client-connection-ip'])) || event.requestContext?.identity?.sourceIp || 'unknown';
-    registerRateLimit(ip);
+    await checkRateLimit(ip, 'register');
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -69,24 +70,5 @@ export async function handler(event, context) {
     }
   } catch (err) {
     return { statusCode: err.statusCode || 500, body: JSON.stringify({ error: err.message }) };
-  }
-}
-
-// Simple in-memory rate limiter (module-scope). Note: serverless functions are ephemeral; for robust limits use Redis.
-const rateMap = new Map();
-function registerRateLimit(ip, limit = 5, windowMs = 60 * 1000) {
-  const now = Date.now();
-  const entry = rateMap.get(ip) || { count: 0, first: now };
-  if (now - entry.first > windowMs) {
-    entry.count = 1;
-    entry.first = now;
-  } else {
-    entry.count += 1;
-  }
-  rateMap.set(ip, entry);
-  if (entry.count > limit) {
-    const err = new Error('Rate limit exceeded');
-    err.statusCode = 429;
-    throw err;
   }
 }
