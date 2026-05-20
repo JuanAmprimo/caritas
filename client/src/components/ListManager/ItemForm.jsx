@@ -1,7 +1,23 @@
 import { Row, Col, Form, Button } from 'react-bootstrap';
 import { Plus } from 'lucide-react';
 
+const formatDateInput = (value) => {
+  const numeric = value.replace(/\D/g, '').slice(0, 8);
+  const day = numeric.slice(0, 2);
+  const month = numeric.slice(2, 4);
+  const year = numeric.slice(4, 8);
+  return [day, month, year].filter(Boolean).join('/');
+};
+
 export default function ItemForm({ fields, newItem, setNewItem, addItem }) {
+  const handleFieldChange = (name, type, value) => {
+    if (type === 'date') {
+      setNewItem({ ...newItem, [name]: formatDateInput(value) });
+    } else {
+      setNewItem({ ...newItem, [name]: value });
+    }
+  };
+
   return (
     <Row className="mb-4">
       <Col>
@@ -12,12 +28,12 @@ export default function ItemForm({ fields, newItem, setNewItem, addItem }) {
               <Form.Group>
                 <Form.Label className="text-capitalize">{field.name}</Form.Label>
                 <Form.Control
-                  type={field.type === 'alphanumeric' ? 'text' : field.type === 'date' ? 'date' : field.type}
+                  type={field.type === 'alphanumeric' ? 'text' : field.type === 'date' ? 'text' : field.type}
+                  inputMode={field.type === 'date' ? 'numeric' : undefined}
                   value={newItem[field.name] || ''}
-                  onChange={(e) =>
-                    setNewItem({ ...newItem, [field.name]: e.target.value })
-                  }
-                  placeholder={field.type === 'date' ? 'Selecciona una fecha' : `Ingresa ${field.name}`}
+                  onChange={(e) => handleFieldChange(field.name, field.type, e.target.value)}
+                  placeholder={field.type === 'date' ? 'dd/mm/yyyy' : `Ingresa ${field.name}`}
+                  maxLength={field.type === 'date' ? 10 : undefined}
                 />
               </Form.Group>
             </Col>
