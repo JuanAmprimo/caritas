@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Container, Card } from "react-bootstrap";
 import { apiFetch } from "../../utils/auth.js";
 import DonationForm from "./DonationForm";
@@ -15,6 +15,9 @@ export default function PriceCalculator({ searchTerm }) {
     size: "",
   });
   const [editingId, setEditingId] = useState(null);
+  const saveTimer = useRef(null);
+
+  const DRAFT_DONATIONS_KEY = "caritas_autosaved_donations";
 
   // 🔹 Traer donaciones del backend al cargar
   useEffect(() => {
@@ -31,6 +34,81 @@ export default function PriceCalculator({ searchTerm }) {
 
     fetchDonations();
   }, []);
+
+  // Restaurar borrador local de donaciones y sincronizar si hay sesión
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_DONATIONS_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDonations(parsed);
+        }
+      } catch (err) {
+        console.error("Error parseando borrador de donaciones:", err);
+      }
+    }
+
+    const trySync = async () => {
+      await syncDrafts();
+    };
+
+    // Intentar sincronizar al montar
+    trySync();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") syncDrafts();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  // Guardado local (debounced)
+  useEffect(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_DONATIONS_KEY, JSON.stringify(donations));
+      } catch (err) {
+        console.error("Error guardando borrador de donaciones:", err);
+      }
+    }, 700);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [donations]);
+
+  // Sincronizar borradores locales con backend cuando haya sesión
+  async function syncDrafts() {
+    try {
+      const access = localStorage.getItem("accessToken");
+      if (!access) return;
+      const unsynced = donations.filter((d) => !d._id);
+      if (unsynced.length === 0) return;
+
+      for (const d of unsynced) {
+        try {
+          const res = await apiFetch(`/.netlify/functions/createDonation`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(d),
+          });
+          if (res.ok) {
+            const created = await res.json();
+            setDonations((prev) => prev.map((p) => (p === d || p.id === d.id ? created : p)));
+          }
+        } catch (err) {
+          console.error("Error al sincronizar donación:", err);
+        }
+      }
+
+      // Si ya no hay donaciones sin _id, eliminar borrador local
+      const remaining = donations.filter((d) => !d._id);
+      if (remaining.length === 0) localStorage.removeItem(DRAFT_DONATIONS_KEY);
+    } catch (err) {
+      console.error("Error en syncDrafts:", err);
+    }
+  }
 
   const handleInputChange = (field, value) =>
     setFormData({ ...formData, [field]: value });
