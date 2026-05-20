@@ -2,7 +2,37 @@ import { Table, Button } from 'react-bootstrap';
 import { Edit2, Trash2 } from 'lucide-react';
 import  '/src/ItemTable.css';
 
-export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
+import { useState } from 'react';
+import { Table, Button } from 'react-bootstrap';
+import { Edit2, Trash2 } from 'lucide-react';
+import  '/src/ItemTable.css';
+
+export default function ItemTable({ fields, items, openEditItem, deleteItem, moveItem }) {
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  const handleDragStart = (event, index) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleDragOver = (event, index) => {
+    event.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (event, index) => {
+    event.preventDefault();
+    const fromIndex = Number(event.dataTransfer.getData('text/plain'));
+    setDragOverIndex(null);
+    if (!Number.isNaN(fromIndex)) {
+      moveItem(fromIndex, index);
+    }
+  };
+
   return (
     <div>
       <h5 className="mb-3 text-primary fw-bold">📋 Items de la Lista</h5>
@@ -21,10 +51,16 @@ export default function ItemTable({ fields, items, openEditItem, deleteItem }) {
               </tr>
             </thead>
             <tbody>
-              {items.map(item => (
-                <tr 
-                  key={item.id} 
+              {items.map((item, index) => (
+                <tr
+                  key={item.id}
                   data-name={Object.values(item).join(" ").toLowerCase()}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={dragOverIndex === index ? 'drag-over-row' : ''}
                 >
                   {fields.map(field => (
                     <td key={field.id}>{item[field.name] || '-'}</td>

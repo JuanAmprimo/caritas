@@ -192,6 +192,14 @@ export default function ListManager({ searchTerm }) {
     setItems(updatedItems);
   };
 
+  const moveItem = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const updatedItems = [...items];
+    const [movedItem] = updatedItems.splice(fromIndex, 1);
+    updatedItems.splice(toIndex, 0, movedItem);
+    setItems(updatedItems);
+  };
+
   const openEditItem = (item) => {
     setEditingItem(item);
     setShowEditItem(true);
@@ -357,6 +365,7 @@ export default function ListManager({ searchTerm }) {
               items={items}
               openEditItem={openEditItem}
               deleteItem={deleteItem}
+              moveItem={moveItem}
             />
           </div>
 

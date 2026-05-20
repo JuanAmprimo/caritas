@@ -21,6 +21,19 @@
   transition: background-color 0.2s ease-in-out;
 }
 
+.custom-table tr.drag-over-row {
+  background-color: #cfe2ff;
+  border: 2px dashed #3b82f6;
+}
+
+.custom-table tr {
+  cursor: grab;
+}
+
+.custom-table tr:active {
+  cursor: grabbing;
+}
+
 .btn-edit {
   background-color: #f59e0b !important; /* naranja */
   border-color: #f59e0b !important;
