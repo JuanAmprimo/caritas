@@ -39,9 +39,30 @@ export async function handler(event, context) {
       return { statusCode: 403, body: JSON.stringify({ error: "Refresh token invalido" }) };
     }
 
-    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
 
-    return { statusCode: 200, body: JSON.stringify({ message: "Access token renovado", accessToken: newAccessToken }) };
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    const cookieOptions = [
+      `refreshToken=${newRefreshToken}`,
+      "HttpOnly",
+      "Path=/",
+      "Max-Age=2592000",
+      "SameSite=Strict",
+    ];
+    if (process.env.NODE_ENV === "production") {
+      cookieOptions.push("Secure");
+    }
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Set-Cookie": cookieOptions.join("; "),
+      },
+      body: JSON.stringify({ message: "Access token renovado", accessToken: newAccessToken }),
+    };
   } catch (err) {
     return { statusCode: err.statusCode || 403, body: JSON.stringify({ error: err.message || "Refresh token invalido o expirado" }) };
   }

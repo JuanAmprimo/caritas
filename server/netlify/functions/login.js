@@ -63,8 +63,8 @@ export async function handler(event, context) {
       return { statusCode: 400, body: JSON.stringify({ error: "Password incorrecta" }) };
     }
 
-    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
 
     user.refreshToken = refreshToken;
     await user.save();
@@ -74,7 +74,7 @@ export async function handler(event, context) {
       `refreshToken=${refreshToken}`,
       "HttpOnly",
       "Path=/",
-      "Max-Age=604800",
+      "Max-Age=2592000",
       "SameSite=Strict",
     ];
     if (process.env.NODE_ENV === "production") {

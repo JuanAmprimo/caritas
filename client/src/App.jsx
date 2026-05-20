@@ -6,7 +6,7 @@ import PriceCalculator from './components/PriceCalculator/PriceCalculator';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import { useState, useEffect } from 'react';
-import { apiFetch, clearTokens } from './utils/auth.js';
+import { apiFetch, clearTokens, refreshAccessToken } from './utils/auth.js';
 import './index.css';
 import './App.css';
 
@@ -20,7 +20,9 @@ export default function App() {
 
     let cancelled = false;
 
-    const checkUserExists = async () => {
+    const keepSessionAlive = async () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+
       try {
         const res = await apiFetch(`/.netlify/functions/getUser`, { method: 'GET' });
         if (!res) return; // apiFetch may redirect
@@ -39,10 +41,25 @@ export default function App() {
       }
     };
 
-    // Ejecutar al montar y luego cada 5 segundos
-    checkUserExists();
-    const intervalId = setInterval(checkUserExists, 5000);
-    return () => clearInterval(intervalId);
+    const refreshSession = async () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+
+      try {
+        await refreshAccessToken();
+      } catch (err) {
+        console.error('Error al refrescar sesión en segundo plano:', err);
+      }
+    };
+
+    keepSessionAlive();
+    const keepAliveInterval = setInterval(keepSessionAlive, 10 * 60 * 1000); // cada 10 minutos
+    const refreshInterval = setInterval(refreshSession, 50 * 60 * 1000); // cada 50 minutos
+
+    return () => {
+      cancelled = true;
+      clearInterval(keepAliveInterval);
+      clearInterval(refreshInterval);
+    };
   }, [isLoggedIn, setIsLoggedIn, setUsername]);
 
   return (
