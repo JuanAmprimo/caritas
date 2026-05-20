@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
 import { Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
@@ -7,6 +7,8 @@ import EditItemModal from "./EditItemModal";
 import ItemForm from "./ItemForm";
 import ItemTable from "./ItemTable";
 import { apiFetch } from "../../utils/auth.js";
+
+const DRAFT_STORAGE_KEY = "caritas_autosaved_list";
 
 export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
@@ -20,6 +22,73 @@ export default function ListManager({ searchTerm }) {
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({});
   const [currentListId, setCurrentListId] = useState(null);
+  const [draftKey, setDraftKey] = useState(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
+
+  const saveTimer = useRef(null);
+  const isLoadingList = useRef(false);
+  const ignoreNextAutoSave = useRef(false);
+
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    let parsed = null;
+    if (savedDraft) {
+      try {
+        parsed = JSON.parse(savedDraft);
+      } catch (err) {
+        console.error("Error al recuperar borrador de lista:", err);
+      }
+    }
+
+    const loadedDraftKey = parsed?.draftKey || `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    setDraftKey(loadedDraftKey);
+
+    if (
+      parsed &&
+      (parsed.title || (Array.isArray(parsed.fields) && parsed.fields.length > 0) ||
+        (Array.isArray(parsed.items) && parsed.items.length > 0))
+    ) {
+      ignoreNextAutoSave.current = true;
+      setFields(parsed.fields || []);
+      setItems(parsed.items || []);
+      setListTitle(parsed.title || "");
+      setCurrentListId(parsed.currentListId || null);
+      setAutoSaveStatus("Recuperado guardado automático");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      JSON.stringify({ title: listTitle, fields, items, currentListId, draftKey }),
+    );
+  }, [fields, items, listTitle, currentListId, draftKey]);
+
+  useEffect(() => {
+    if (ignoreNextAutoSave.current) {
+      ignoreNextAutoSave.current = false;
+      return;
+    }
+
+    if (isLoadingList.current) return;
+    if (!fields.length && !items.length && !listTitle.trim()) return;
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+    }
+
+    setAutoSaveStatus("Guardando...");
+    saveTimer.current = setTimeout(() => {
+      updateList(false);
+    }, 900);
+
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+      }
+    };
+  }, [fields, items, listTitle, draftKey]);
 
   // 🔹 Traer listas desde MongoDB (Netlify Functions)
   useEffect(() => {
@@ -68,32 +137,12 @@ export default function ListManager({ searchTerm }) {
   };
 
   const saveList = async () => {
-    if (!listTitle.trim()) {
-      alert("Debes poner un nombre a la lista antes de guardarla.");
+    if (!listTitle.trim() && !fields.length && !items.length) {
+      alert("Agrega campos o un título antes de guardar.");
       return;
     }
 
-    try {
-      const res = await apiFetch(`/.netlify/functions/createList`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: listTitle,
-          fields,
-          items,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setLists([...lists, data]);
-        alert("Lista guardada con éxito ✅");
-      } else {
-        alert(data.error || "Error al guardar la lista");
-      }
-    } catch (err) {
-      console.error("Error al guardar lista:", err);
-    }
+    await updateList(true);
   };
 
   const deleteList = async (id) => {
@@ -136,13 +185,11 @@ export default function ListManager({ searchTerm }) {
     const updatedItems = [...items, item];
     setItems(updatedItems);
     setNewItem({});
-    updateList(); // 🔹 guardar automáticamente en MongoDB
   };
 
   const deleteItem = (id) => {
     const updatedItems = items.filter((item) => item.id !== id);
     setItems(updatedItems);
-    updateList();
   };
 
   const openEditItem = (item) => {
@@ -158,7 +205,6 @@ export default function ListManager({ searchTerm }) {
       setItems(updatedItems);
       setShowEditItem(false);
       setEditingItem(null);
-      updateList(); // 🔹 guardar automáticamente
     }
   };
 
@@ -170,36 +216,52 @@ export default function ListManager({ searchTerm }) {
 
   const loadList = async (list) => {
     try {
+      isLoadingList.current = true;
       const res = await apiFetch(`/.netlify/functions/getListById/${list._id}`, { method: "GET" });
       const data = await res.json();
       setFields(data.fields || []);
       setItems(data.items || []);
       setListTitle(data.title);
       setCurrentListId(data._id);
+      ignoreNextAutoSave.current = true;
+      setAutoSaveStatus("Lista cargada");
     } catch (err) {
       console.error("Error al cargar lista:", err);
+    } finally {
+      setTimeout(() => {
+        isLoadingList.current = false;
+      }, 0);
     }
   };
 
-  const updateList = async () => {
+  const updateList = async (showAlerts = false) => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+
+    if (!fields.length && !items.length && !listTitle.trim()) {
+      setAutoSaveStatus("Sin cambios");
+      return null;
+    }
+
     try {
       let res;
       if (currentListId) {
-        // 🔹 Actualizar lista existente
         res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: listTitle, fields, items }),
         });
       } else {
-        // 🔹 Crear lista nueva automáticamente
         res = await apiFetch(`/.netlify/functions/createList`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            title: listTitle || "Lista sin nombre",
+            title: listTitle.trim() || "Lista sin nombre",
             fields,
             items,
+            draftKey,
           }),
         });
       }
@@ -207,16 +269,30 @@ export default function ListManager({ searchTerm }) {
       const data = await res.json();
       if (res.ok) {
         if (currentListId) {
-          setLists(lists.map((l) => (l._id === currentListId ? data : l)));
+          setLists((prev) => prev.map((l) => (l._id === currentListId ? data : l)));
         } else {
-          setLists([...lists, data]);
+          setLists((prev) => [...prev, data]);
           setCurrentListId(data._id);
         }
+        ignoreNextAutoSave.current = true;
+        setAutoSaveStatus(showAlerts ? "Lista guardada ✅" : "Guardado automáticamente");
+
+        if (showAlerts) {
+          alert("Lista guardada con éxito ✅");
+        }
+
+        return data;
       } else {
-        alert(data.error || "Error al guardar la lista");
+        if (showAlerts) {
+          alert(data.error || "Error al guardar la lista");
+        }
+        setAutoSaveStatus("Error al guardar");
+        return null;
       }
     } catch (err) {
       console.error("Error al actualizar lista:", err);
+      setAutoSaveStatus("Error al guardar");
+      return null;
     }
   };
 
@@ -306,6 +382,7 @@ export default function ListManager({ searchTerm }) {
           >
             Guardar Lista
           </Button>
+          <div className="mt-2 text-muted small">{autoSaveStatus}</div>
         </Card.Body>
       </Card>
 

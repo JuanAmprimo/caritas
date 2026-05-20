@@ -18,9 +18,19 @@ export async function handler(event, context) {
     const title = String(parsedBody.title || "").trim();
     const fields = Array.isArray(parsedBody.fields) ? parsedBody.fields : [];
     const items = Array.isArray(parsedBody.items) ? parsedBody.items : [];
+    const draftKey = String(parsedBody.draftKey || "").trim();
 
     if (!title) {
       return { statusCode: 400, body: JSON.stringify({ error: "El título de la lista es obligatorio." }) };
+    }
+
+    if (draftKey) {
+      const updatedList = await List.findOneAndUpdate(
+        { userId, draftKey },
+        { title, userId, fields, items, draftKey },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+      );
+      return { statusCode: 201, body: JSON.stringify(updatedList) };
     }
 
     const newList = new List({ title, userId, fields, items });
