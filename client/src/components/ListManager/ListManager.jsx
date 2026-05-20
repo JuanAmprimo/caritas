@@ -81,7 +81,8 @@ export default function ListManager({ searchTerm }) {
 
     setAutoSaveStatus("Guardando...");
     saveTimer.current = setTimeout(() => {
-      updateList(false);
+      // En autoguardado no crear nuevas listas en el backend: solo actualizar si ya existe
+      updateList(false, false);
     }, 900);
 
     return () => {
@@ -151,7 +152,8 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    await updateList(true);
+    // Al guardar manualmente permitimos crear la lista en el backend
+    await updateList(true, true);
   };
 
   const deleteList = async (id) => {
@@ -251,7 +253,7 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  const updateList = async (showAlerts = false) => {
+  const updateList = async (showAlerts = false, allowCreate = true) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -259,6 +261,13 @@ export default function ListManager({ searchTerm }) {
 
     if (!fields.length && !items.length && !listTitle.trim()) {
       setAutoSaveStatus("Sin cambios");
+      return null;
+    }
+
+    // Si no se permite crear y no existe currentListId, evitamos llamar al backend.
+    if (!allowCreate && !currentListId) {
+      // Ya se guarda el borrador en localStorage por el efecto; solo actualizamos estado visible
+      setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
       return null;
     }
 
