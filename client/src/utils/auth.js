@@ -72,10 +72,9 @@ export async function apiFetch(url, options = {}) {
     const body = await cloned.json().catch(() => null);
     const msg = (body && (body.error || body.message || "")) || "";
 
+    const isUserNotFoundMessage = /usuario no encontrado|user not found|account not found/i.test(msg);
     const indicatesMissingUser =
-      res.status === 404 ||
-      res.status === 410 ||
-      /user|usuario|no encontrado|not found/i.test(msg);
+      (res.status === 404 || res.status === 410) && isUserNotFoundMessage;
 
     if (indicatesMissingUser) {
       clearTokens();
