@@ -41,15 +41,7 @@ export default function Register() {
     e.preventDefault();
     if (validateForm()) {
       try {
-        // Attempt to get recaptcha token if grecaptcha is available
-        let recaptchaToken = '';
-        try {
-          if (window.grecaptcha && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
-            recaptchaToken = await window.grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'register' });
-          }
-        } catch (ignored) {}
-
-        const payload = { username: formData.username, email: formData.email.trim().toLowerCase(), confirmEmail: formData.confirmEmail ? formData.confirmEmail.trim().toLowerCase() : formData.email.trim().toLowerCase(), password: formData.password, recaptchaToken };
+        const payload = { username: formData.username, email: formData.email.trim().toLowerCase(), confirmEmail: formData.confirmEmail ? formData.confirmEmail.trim().toLowerCase() : formData.email.trim().toLowerCase(), password: formData.password };
 
         const res = await fetch(`/.netlify/functions/register`, {
           method: "POST",

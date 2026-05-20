@@ -31,20 +31,11 @@ export default function Login({ setIsLoggedIn, setUsername }) {
     e.preventDefault();
     if (validateForm()) {
       try {
-        let recaptchaToken = "";
-        if (window.grecaptcha && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
-          try {
-            recaptchaToken = await window.grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'login' });
-          } catch (recaptchaError) {
-            console.error("Error al ejecutar reCAPTCHA:", recaptchaError);
-          }
-        }
-
         const res = await fetch(`/.netlify/functions/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
-          body: JSON.stringify({ ...formData, recaptchaToken }),
+          body: JSON.stringify(formData),
         });
         const data = await res.json();
 

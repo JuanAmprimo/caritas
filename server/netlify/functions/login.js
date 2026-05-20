@@ -46,25 +46,6 @@ export async function handler(event, context) {
     // Rate limiting
     loginRateLimit(ip);
 
-    // Verify reCAPTCHA if secret provided
-    const recaptchaToken = String(parsedBody.recaptchaToken || "");
-    if (process.env.RECAPTCHA_SECRET) {
-      if (!recaptchaToken) {
-        await Log.create({ ip, email, action: 'login', success: false, reason: 'missing_recaptcha' });
-        return { statusCode: 400, body: JSON.stringify({ error: "reCAPTCHA requerido" }) };
-      }
-      const recRes = await fetch(`https://www.google.com/recaptcha/api/siteverify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${encodeURIComponent(process.env.RECAPTCHA_SECRET)}&response=${encodeURIComponent(recaptchaToken)}`
-      });
-      const recJson = await recRes.json();
-      if (!recJson.success) {
-        await Log.create({ ip, email, action: 'login', success: false, reason: 'recaptcha_failed' });
-        return { statusCode: 400, body: JSON.stringify({ error: "reCAPTCHA no válido" }) };
-      }
-    }
-
     const user = await User.findOne({ email });
     if (!user) {
       await Log.create({ ip, email, action: 'login', success: false, reason: 'not_found' });

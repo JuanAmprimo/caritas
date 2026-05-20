@@ -53,25 +53,6 @@ export async function handler(event, context) {
       return { statusCode: 400, body: JSON.stringify({ error: "El email ya esta registrado" }) };
     }
 
-    // If server configured with RECAPTCHA_SECRET, verify token
-    const recaptchaToken = String(parsedBody.recaptchaToken || "");
-    if (process.env.RECAPTCHA_SECRET) {
-      if (!recaptchaToken) {
-        await Log.create({ ip, email, action: 'register', success: false, reason: 'missing_recaptcha' });
-        return { statusCode: 400, body: JSON.stringify({ error: "reCAPTCHA requerido" }) };
-      }
-      const recRes = await fetch(`https://www.google.com/recaptcha/api/siteverify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${encodeURIComponent(process.env.RECAPTCHA_SECRET)}&response=${encodeURIComponent(recaptchaToken)}`
-      });
-      const recJson = await recRes.json();
-      if (!recJson.success) {
-        await Log.create({ ip, email, action: 'register', success: false, reason: 'recaptcha_failed' });
-        return { statusCode: 400, body: JSON.stringify({ error: "reCAPTCHA no válido" }) };
-      }
-    }
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ username, email, password: hashedPassword });
     try {
