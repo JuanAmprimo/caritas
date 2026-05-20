@@ -12,12 +12,12 @@ export default function ItemForm({ fields, newItem, setNewItem, addItem }) {
               <Form.Group>
                 <Form.Label className="text-capitalize">{field.name}</Form.Label>
                 <Form.Control
-                  type={field.type === 'alphanumeric' ? 'text' : field.type}
+                  type={field.type === 'alphanumeric' ? 'text' : field.type === 'date' ? 'date' : field.type}
                   value={newItem[field.name] || ''}
                   onChange={(e) =>
                     setNewItem({ ...newItem, [field.name]: e.target.value })
                   }
-                  placeholder={`Ingresa ${field.name}`}
+                  placeholder={field.type === 'date' ? 'Selecciona una fecha' : `Ingresa ${field.name}`}
                 />
               </Form.Group>
             </Col>

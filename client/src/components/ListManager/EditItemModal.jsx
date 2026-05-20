@@ -18,11 +18,12 @@ export default function EditItemModal({
           <Form.Group key={field.id} className="mb-3">
             <Form.Label className="text-capitalize">{field.name}</Form.Label>
             <Form.Control
-              type={field.type === 'alphanumeric' ? 'text' : field.type}
+              type={field.type === 'alphanumeric' ? 'text' : field.type === 'date' ? 'date' : field.type}
               value={editingItem[field.name] || ''}
               onChange={(e) =>
                 setEditingItem({ ...editingItem, [field.name]: e.target.value })
               }
+              placeholder={field.type === 'date' ? 'Selecciona una fecha' : undefined}
             />
           </Form.Group>
         ))}
