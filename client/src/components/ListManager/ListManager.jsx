@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
 import { Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
@@ -9,6 +9,11 @@ import ItemTable from "./ItemTable";
 import { apiFetch } from "../../utils/auth.js";
 
 const DRAFT_STORAGE_KEY = "caritas_autosaved_list";
+
+const getScopedStorageKey = () => {
+  const userId = localStorage.getItem("userId") || "anonymous";
+  return `${DRAFT_STORAGE_KEY}:${userId}`;
+};
 
 export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
@@ -26,16 +31,22 @@ export default function ListManager({ searchTerm }) {
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
 
+  const draftStorageKey = useRef(getScopedStorageKey());
   const saveTimer = useRef(null);
   const isLoadingList = useRef(false);
   const ignoreNextAutoSave = useRef(false);
 
   useEffect(() => {
-    const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    const scopedDraft = localStorage.getItem(draftStorageKey.current);
+    const legacyDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    const savedDraft = scopedDraft || legacyDraft;
     let parsed = null;
     if (savedDraft) {
       try {
         parsed = JSON.parse(savedDraft);
+        if (!scopedDraft && legacyDraft) {
+          localStorage.removeItem(DRAFT_STORAGE_KEY);
+        }
       } catch (err) {
         console.error("Error al recuperar borrador de lista:", err);
       }
@@ -47,50 +58,108 @@ export default function ListManager({ searchTerm }) {
     if (
       parsed &&
       (parsed.title || (Array.isArray(parsed.fields) && parsed.fields.length > 0) ||
-        (Array.isArray(parsed.items) && parsed.items.length > 0))
+        (Array.isArray(parsed.items) && parsed.items.length > 0) ||
+        (parsed.newItem && Object.keys(parsed.newItem).length > 0) ||
+        parsed.newFieldName ||
+        parsed.editingItem)
     ) {
       ignoreNextAutoSave.current = true;
       setFields(parsed.fields || []);
       setItems(parsed.items || []);
       setListTitle(parsed.title || "");
       setCurrentListId(parsed.currentListId || null);
+      setNewItem(parsed.newItem || {});
+      setNewFieldName(parsed.newFieldName || "");
+      setNewFieldType(parsed.newFieldType || "text");
+      setEditingItem(parsed.editingItem || null);
+      setShowAddField(Boolean(parsed.showAddField));
+      setShowEditItem(Boolean(parsed.showEditItem && parsed.editingItem));
       setAutoSaveStatus("Recuperado guardado automático");
     }
   }, []);
 
   useEffect(() => {
     if (!draftKey) return;
-    localStorage.setItem(
-      DRAFT_STORAGE_KEY,
-      JSON.stringify({ title: listTitle, fields, items, currentListId, draftKey }),
-    );
-  }, [fields, items, listTitle, currentListId, draftKey]);
+    try {
+      localStorage.setItem(
+        draftStorageKey.current,
+        JSON.stringify({
+          title: listTitle,
+          fields,
+          items,
+          currentListId,
+          draftKey,
+          newItem,
+          newFieldName,
+          newFieldType,
+          editingItem,
+          showAddField,
+          showEditItem,
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    } catch (err) {
+      console.error("Error guardando borrador de lista:", err);
+    }
+  }, [
+    fields,
+    items,
+    listTitle,
+    currentListId,
+    draftKey,
+    newItem,
+    newFieldName,
+    newFieldType,
+    editingItem,
+    showAddField,
+    showEditItem,
+  ]);
 
   useEffect(() => {
-    if (ignoreNextAutoSave.current) {
-      ignoreNextAutoSave.current = false;
-      return;
-    }
+    if (!draftKey) return undefined;
 
-    if (isLoadingList.current) return;
-    if (!fields.length && !items.length && !listTitle.trim()) return;
-
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-
-    setAutoSaveStatus("Guardando...");
-    saveTimer.current = setTimeout(() => {
-      // En autoguardado no crear nuevas listas en el backend: solo actualizar si ya existe
-      updateList(false, false);
-    }, 900);
-
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
+    const saveBeforeLeaving = () => {
+      try {
+        localStorage.setItem(
+          draftStorageKey.current,
+          JSON.stringify({
+            title: listTitle,
+            fields,
+            items,
+            currentListId,
+            draftKey,
+            newItem,
+            newFieldName,
+            newFieldType,
+            editingItem,
+            showAddField,
+            showEditItem,
+            updatedAt: new Date().toISOString(),
+          }),
+        );
+      } catch (err) {
+        console.error("Error guardando borrador de lista:", err);
       }
     };
-  }, [fields, items, listTitle, draftKey]);
+
+    window.addEventListener("pagehide", saveBeforeLeaving);
+    return () => {
+      saveBeforeLeaving();
+      window.removeEventListener("pagehide", saveBeforeLeaving);
+    };
+  }, [
+    fields,
+    items,
+    listTitle,
+    currentListId,
+    draftKey,
+    newItem,
+    newFieldName,
+    newFieldType,
+    editingItem,
+    showAddField,
+    showEditItem,
+  ]);
 
   // 🔹 Traer listas desde MongoDB (Netlify Functions)
   useEffect(() => {
@@ -139,7 +208,8 @@ export default function ListManager({ searchTerm }) {
     if (fieldToRemove) {
       setFields(fields.filter((f) => f.id !== fieldId));
       const updatedItems = items.map((item) => {
-        const { [fieldToRemove.name]: _, ...rest } = item;
+        const rest = { ...item };
+        delete rest[fieldToRemove.name];
         return rest;
       });
       setItems(updatedItems);
@@ -242,6 +312,12 @@ export default function ListManager({ searchTerm }) {
       setItems(data.items || []);
       setListTitle(data.title);
       setCurrentListId(data._id);
+      setNewItem({});
+      setNewFieldName("");
+      setNewFieldType("text");
+      setEditingItem(null);
+      setShowAddField(false);
+      setShowEditItem(false);
       ignoreNextAutoSave.current = true;
       setAutoSaveStatus("Lista cargada");
     } catch (err) {
@@ -253,7 +329,7 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  const updateList = async (showAlerts = false, allowCreate = true) => {
+  const updateList = useCallback(async (showAlerts = false, allowCreate = true) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -355,7 +431,33 @@ export default function ListManager({ searchTerm }) {
       setAutoSaveStatus("Error al guardar");
       return null;
     }
-  };
+  }, [currentListId, draftKey, fields, items, listTitle]);
+
+  useEffect(() => {
+    if (ignoreNextAutoSave.current) {
+      ignoreNextAutoSave.current = false;
+      return;
+    }
+
+    if (isLoadingList.current) return;
+    if (!fields.length && !items.length && !listTitle.trim()) return;
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+    }
+
+    saveTimer.current = setTimeout(() => {
+      setAutoSaveStatus("Guardando...");
+      // En autoguardado no crear nuevas listas en el backend: solo actualizar si ya existe
+      updateList(false, false);
+    }, 900);
+
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+      }
+    };
+  }, [fields, items, listTitle, currentListId, draftKey, updateList]);
 
   return (
     <Container fluid className="py-4">

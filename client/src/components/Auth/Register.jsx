@@ -59,7 +59,7 @@ export default function Register() {
           setToastVariant("danger");
           setShowToast(true);
         }
-      } catch (err) {
+      } catch {
         setToastMessage("Error de conexión con el servidor");
         setToastVariant("danger");
         setShowToast(true);

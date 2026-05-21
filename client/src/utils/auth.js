@@ -84,7 +84,7 @@ export async function apiFetch(url, options = {}) {
       window.location.href = "/register";
       // No retornamos nada porque ya navegamos fuera; esto evita que el frontend siga en estado inválido.
     }
-  } catch (err) {
+  } catch {
     // Si no se pudo parsear JSON o ocurrió un error, ignoramos y devolvemos la respuesta original.
   }
 

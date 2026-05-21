@@ -1,6 +1,8 @@
 import { Table, Form, Button } from 'react-bootstrap';
 import { Edit2, Trash2, Image as ImageIcon } from 'lucide-react';
 
+const getDonationKey = (donation) => donation?._id || donation?.id || "";
+
 export default function DonationTable({ donations, updateQuantity, calculateSubtotal, calculateTotal, editDonation, deleteDonation }) {
   return (
     <div className="table-responsive">
@@ -20,7 +22,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
         <tbody>
           {donations.map(donation => (
             <tr 
-              key={donation._id}
+              key={getDonationKey(donation)}
               data-name={`${donation.name} ${donation.description} ${donation.price} ${donation.size}`.toLowerCase()}
             >
               <td style={{ width: '80px' }}>
@@ -43,15 +45,15 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
 
               <td>{donation.name}</td>
               <td>{donation.description || '-'}</td>
-              <td>${donation.price.toFixed(2)}</td>
+              <td>${Number(donation.price || 0).toFixed(2)}</td>
               <td>{donation.size}</td>
               <td style={{ width: '120px' }}>
                 <Form.Control
                   type="number"
                   size="sm"
                   value={donation.quantity}
-                  onChange={(e) => updateQuantity(donation.id, parseInt(e.target.value) || 0)}
-                  min="0"
+                  onChange={(e) => updateQuantity(getDonationKey(donation), e.target.value)}
+                  min="1"
                 />
               </td>
               <td className="fw-bold">${calculateSubtotal(donation).toFixed(2)}</td>
@@ -68,7 +70,7 @@ export default function DonationTable({ donations, updateQuantity, calculateSubt
                   size="sm"
                   className="list-button fw-semibold"
                   style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
-                  onClick={() => deleteDonation(donation._id)}
+                  onClick={() => deleteDonation(getDonationKey(donation))}
                 >
                   <Trash2 size={14} />
                 </Button>

@@ -1,220 +1,472 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { Container, Card } from "react-bootstrap";
 import { apiFetch } from "../../utils/auth.js";
 import DonationForm from "./DonationForm";
 import DonationTable from "./DonationTable";
 
-export default function PriceCalculator({ searchTerm }) {
-  const [donations, setDonations] = useState([]);
-  const [formData, setFormData] = useState({
-    name: "",
-    price: 0,
-    quantity: 1,
-    description: "",
-    image: "",
-    size: "",
+const DRAFT_DONATIONS_KEY = "caritas_autosaved_donations";
+const DEFAULT_FORM_DATA = {
+  name: "",
+  price: "",
+  quantity: 1,
+  description: "",
+  image: "",
+  size: "",
+};
+
+const getDonationKey = (donation) => donation?._id || donation?.id || "";
+
+const hasFormDraft = (data) =>
+  Boolean(
+    data?.name ||
+      data?.price ||
+      data?.description ||
+      data?.image ||
+      data?.size ||
+      (data?.quantity && Number(data.quantity) !== 1),
+  );
+
+const getScopedStorageKey = () => {
+  const userId = localStorage.getItem("userId") || "anonymous";
+  return `${DRAFT_DONATIONS_KEY}:${userId}`;
+};
+
+const normalizeFormData = (data) => {
+  const rawPrice = data.price;
+  const rawQuantity = data.quantity;
+  const price = Number(rawPrice);
+  const quantity = Number.parseInt(rawQuantity, 10);
+
+  return {
+    name: String(data.name || "").trim(),
+    price: Number.isFinite(price) ? price : 0,
+    quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
+    description: String(data.description || "").trim(),
+    image: String(data.image || "").trim(),
+    size: String(data.size || "").trim(),
+  };
+};
+
+const mergeDonations = (serverDonations, localDonations, deletedDonationIds, dirtyDonationIds) => {
+  const deletedIds = new Set(deletedDonationIds);
+  const dirtyIds = new Set(dirtyDonationIds);
+  const merged = new Map();
+
+  serverDonations
+    .filter((donation) => !deletedIds.has(donation._id))
+    .forEach((donation) => merged.set(getDonationKey(donation), donation));
+
+  localDonations.forEach((donation) => {
+    const key = getDonationKey(donation);
+    if (!key) return;
+
+    if (!donation._id || dirtyIds.has(donation._id)) {
+      merged.set(key, donation);
+    }
   });
-  const [editingId, setEditingId] = useState(null);
-  const saveTimer = useRef(null);
 
-  const DRAFT_DONATIONS_KEY = "caritas_autosaved_donations";
+  return Array.from(merged.values());
+};
 
-  // 🔹 Traer donaciones del backend al cargar
-  useEffect(() => {
-    const fetchDonations = async () => {
-      try {
-        const res = await apiFetch(`/.netlify/functions/getDonations`, { method: "GET" });
-        const data = await res.json();
-        setDonations(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error al traer donaciones:", err);
-        setDonations([]);
-      }
-    };
+const readDonationDraft = (storageKey) => {
+  const scopedDraft = localStorage.getItem(storageKey);
+  const legacyDraft = localStorage.getItem(DRAFT_DONATIONS_KEY);
+  const raw = scopedDraft || legacyDraft;
 
-    fetchDonations();
-  }, []);
+  if (!raw) return null;
 
-  // Restaurar borrador local de donaciones y sincronizar si hay sesión
-  useEffect(() => {
-    const saved = localStorage.getItem(DRAFT_DONATIONS_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setDonations(parsed);
-        }
-      } catch (err) {
-        console.error("Error parseando borrador de donaciones:", err);
-      }
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (!scopedDraft && legacyDraft) {
+      localStorage.removeItem(DRAFT_DONATIONS_KEY);
     }
 
-    const trySync = async () => {
-      await syncDrafts();
-    };
+    if (Array.isArray(parsed)) {
+      return {
+        donations: parsed,
+        formData: DEFAULT_FORM_DATA,
+        editingId: null,
+        dirtyDonationIds: [],
+        deletedDonationIds: [],
+      };
+    }
 
-    // Intentar sincronizar al montar
-    trySync();
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") syncDrafts();
+    return {
+      donations: Array.isArray(parsed.donations) ? parsed.donations : [],
+      formData: { ...DEFAULT_FORM_DATA, ...(parsed.formData || {}) },
+      editingId: parsed.editingId || null,
+      dirtyDonationIds: Array.isArray(parsed.dirtyDonationIds) ? parsed.dirtyDonationIds : [],
+      deletedDonationIds: Array.isArray(parsed.deletedDonationIds)
+        ? parsed.deletedDonationIds
+        : [],
     };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+  } catch (err) {
+    console.error("Error parseando borrador de donaciones:", err);
+    return null;
+  }
+};
+
+const hasDonationDraft = (draft) =>
+  Boolean(
+    draft &&
+      (draft.donations.length > 0 ||
+        hasFormDraft(draft.formData) ||
+        draft.editingId ||
+        draft.dirtyDonationIds.length > 0 ||
+        draft.deletedDonationIds.length > 0),
+  );
+
+export default function PriceCalculator({ searchTerm }) {
+  const [draftStorageKey] = useState(() => getScopedStorageKey());
+  const [initialDraft] = useState(() => readDonationDraft(draftStorageKey));
+  const initialHasDraft = hasDonationDraft(initialDraft);
+  const syncInProgress = useRef(false);
+
+  const [donations, setDonations] = useState(() =>
+    initialHasDraft ? initialDraft.donations : [],
+  );
+  const [formData, setFormData] = useState(() =>
+    initialHasDraft ? initialDraft.formData : DEFAULT_FORM_DATA,
+  );
+  const [editingId, setEditingId] = useState(() =>
+    initialHasDraft ? initialDraft.editingId : null,
+  );
+  const [dirtyDonationIds, setDirtyDonationIds] = useState(() =>
+    initialHasDraft ? initialDraft.dirtyDonationIds : [],
+  );
+  const [deletedDonationIds, setDeletedDonationIds] = useState(() =>
+    initialHasDraft ? initialDraft.deletedDonationIds : [],
+  );
+
+  const persistDraft = useCallback((draft) => {
+    try {
+      localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          ...draft,
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    } catch (err) {
+      console.error("Error guardando borrador de donaciones:", err);
+    }
+  }, [draftStorageKey]);
+
+  const addDirtyDonation = useCallback((id) => {
+    if (!id) return;
+    setDirtyDonationIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
 
-  // Guardado local (debounced)
-  useEffect(() => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      try {
-        localStorage.setItem(DRAFT_DONATIONS_KEY, JSON.stringify(donations));
-      } catch (err) {
-        console.error("Error guardando borrador de donaciones:", err);
-      }
-    }, 700);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [donations]);
+  const removeDirtyDonation = useCallback((id) => {
+    if (!id) return;
+    setDirtyDonationIds((prev) => prev.filter((dirtyId) => dirtyId !== id));
+  }, []);
 
-  // Sincronizar borradores locales con backend cuando haya sesión
-  async function syncDrafts() {
+  const addDeletedDonation = useCallback((id) => {
+    if (!id) return;
+    setDeletedDonationIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setDirtyDonationIds((prev) => prev.filter((dirtyId) => dirtyId !== id));
+  }, []);
+
+  const removeDeletedDonation = useCallback((id) => {
+    if (!id) return;
+    setDeletedDonationIds((prev) => prev.filter((deletedId) => deletedId !== id));
+  }, []);
+
+  const syncDrafts = useCallback(async () => {
+    if (syncInProgress.current) return;
+    syncInProgress.current = true;
+
     try {
       const access = localStorage.getItem("accessToken");
       if (!access) return;
-      const unsynced = donations.filter((d) => !d._id);
-      if (unsynced.length === 0) return;
 
-      for (const d of unsynced) {
+      for (const id of deletedDonationIds) {
+        try {
+          const res = await apiFetch(`/.netlify/functions/deleteDonation/${id}`, {
+            method: "DELETE",
+          });
+          if (res?.ok) removeDeletedDonation(id);
+        } catch (err) {
+          console.error("Error al sincronizar eliminacion de donacion:", err);
+        }
+      }
+
+      for (const donation of donations) {
+        if (!donation._id) continue;
+        if (!dirtyDonationIds.includes(donation._id)) continue;
+        if (deletedDonationIds.includes(donation._id)) continue;
+
+        try {
+          const res = await apiFetch(`/.netlify/functions/updateDonation/${donation._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(normalizeFormData(donation)),
+          });
+
+          if (res?.ok) {
+            const updated = await res.json();
+            setDonations((prev) =>
+              prev.map((item) => (item._id === donation._id ? updated : item)),
+            );
+            removeDirtyDonation(donation._id);
+          }
+        } catch (err) {
+          console.error("Error al sincronizar donacion:", err);
+        }
+      }
+
+      for (const donation of donations) {
+        if (donation._id) continue;
+
         try {
           const res = await apiFetch(`/.netlify/functions/createDonation`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(d),
+            body: JSON.stringify(normalizeFormData(donation)),
           });
-          if (res.ok) {
+
+          if (res?.ok) {
             const created = await res.json();
-            setDonations((prev) => prev.map((p) => (p === d || p.id === d.id ? created : p)));
+            const localKey = getDonationKey(donation);
+            setDonations((prev) =>
+              prev.map((item) => (getDonationKey(item) === localKey ? created : item)),
+            );
           }
         } catch (err) {
-          console.error("Error al sincronizar donación:", err);
+          console.error("Error al sincronizar donacion local:", err);
         }
       }
-
-      // Si ya no hay donaciones sin _id, eliminar borrador local
-      const remaining = donations.filter((d) => !d._id);
-      if (remaining.length === 0) localStorage.removeItem(DRAFT_DONATIONS_KEY);
     } catch (err) {
       console.error("Error en syncDrafts:", err);
+    } finally {
+      syncInProgress.current = false;
     }
-  }
+  }, [deletedDonationIds, dirtyDonationIds, donations, removeDeletedDonation, removeDirtyDonation]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDonations = async () => {
+      try {
+        const res = await apiFetch(`/.netlify/functions/getDonations`, { method: "GET" });
+        if (!res || !res.ok) return;
+
+        const data = await res.json();
+        if (!Array.isArray(data) || cancelled) return;
+
+        setDonations((prev) =>
+          initialHasDraft
+            ? mergeDonations(
+                data,
+                prev,
+                initialDraft?.deletedDonationIds || [],
+                initialDraft?.dirtyDonationIds || [],
+              )
+            : data,
+        );
+      } catch (err) {
+        console.error("Error al traer donaciones:", err);
+      }
+    };
+
+    fetchDonations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraft, initialHasDraft]);
+
+  useEffect(() => {
+    persistDraft({
+      donations,
+      formData,
+      editingId,
+      dirtyDonationIds,
+      deletedDonationIds,
+    });
+  }, [donations, formData, editingId, dirtyDonationIds, deletedDonationIds, persistDraft]);
+
+  useEffect(() => {
+    const saveBeforeLeaving = () => {
+      persistDraft({
+        donations,
+        formData,
+        editingId,
+        dirtyDonationIds,
+        deletedDonationIds,
+      });
+    };
+
+    window.addEventListener("pagehide", saveBeforeLeaving);
+    return () => {
+      saveBeforeLeaving();
+      window.removeEventListener("pagehide", saveBeforeLeaving);
+    };
+  }, [donations, formData, editingId, dirtyDonationIds, deletedDonationIds, persistDraft]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      syncDrafts();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [syncDrafts]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") syncDrafts();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [syncDrafts]);
 
   const handleInputChange = (field, value) =>
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () =>
-        setFormData({ ...formData, image: reader.result });
+        setFormData((prev) => ({ ...prev, image: reader.result }));
       reader.readAsDataURL(file);
     }
   };
 
-  // 🔹 Crear o actualizar donación
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData(DEFAULT_FORM_DATA);
+  };
+
   const addOrUpdateDonation = async () => {
-    if (!formData.name || !formData.price) {
+    const payload = normalizeFormData(formData);
+    const rawPrice = Number(formData.price);
+
+    if (!payload.name || formData.price === "" || formData.price === null || !Number.isFinite(rawPrice)) {
       alert("Por favor completa el nombre y precio");
       return;
     }
 
-    try {
-      let res;
-      if (editingId) {
-        res = await apiFetch(`/.netlify/functions/updateDonation/${editingId}`, {
+    if (editingId) {
+      const original = donations.find((donation) => getDonationKey(donation) === editingId);
+      const localUpdated = {
+        ...(original || {}),
+        ...payload,
+        id: original?.id || editingId,
+      };
+
+      setDonations((prev) =>
+        prev.map((donation) =>
+          getDonationKey(donation) === editingId ? localUpdated : donation,
+        ),
+      );
+
+      if (original?._id) addDirtyDonation(original._id);
+      resetForm();
+
+      if (!original?._id) return;
+
+      try {
+        const res = await apiFetch(`/.netlify/functions/updateDonation/${original._id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
-      } else {
-        res = await apiFetch(`/.netlify/functions/createDonation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
+
+        if (res?.ok) {
+          const updated = await res.json();
+          setDonations((prev) =>
+            prev.map((donation) => (donation._id === original._id ? updated : donation)),
+          );
+          removeDirtyDonation(original._id);
+        }
+      } catch (err) {
+        console.error("Error al guardar donacion:", err);
       }
 
-      const data = await res.json();
-      if (res.ok) {
-        setDonations(
-          editingId
-            ? donations.map((d) => (d._id === editingId ? data : d))
-            : [...donations, data]
+      return;
+    }
+
+    const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const localDonation = { ...payload, id: localId };
+    setDonations((prev) => [...prev, localDonation]);
+    resetForm();
+
+    try {
+      const res = await apiFetch(`/.netlify/functions/createDonation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res?.ok) {
+        const created = await res.json();
+        setDonations((prev) =>
+          prev.map((donation) => (donation.id === localId ? created : donation)),
         );
-        setEditingId(null);
-        setFormData({
-          name: "",
-          price: 0,
-          quantity: 1,
-          description: "",
-          image: "",
-          size: "",
-        });
       }
     } catch (err) {
-      console.error("Error al guardar donación:", err);
+      console.error("Error al guardar donacion:", err);
     }
   };
 
   const editDonation = (donation) => {
-    setFormData(donation);
-    setEditingId(donation._id);
+    setFormData({ ...DEFAULT_FORM_DATA, ...donation });
+    setEditingId(getDonationKey(donation));
   };
 
   const deleteDonation = async (id) => {
+    const donation = donations.find((item) => getDonationKey(item) === id);
+    setDonations((prev) => prev.filter((item) => getDonationKey(item) !== id));
+
+    if (!donation?._id) return;
+
+    addDeletedDonation(donation._id);
+
     try {
-      const res = await apiFetch(`/.netlify/functions/deleteDonation/${id}`, {
+      const res = await apiFetch(`/.netlify/functions/deleteDonation/${donation._id}`, {
         method: "DELETE",
       });
 
-      if (res.ok) {
-        setDonations(donations.filter((d) => d._id !== id));
-      }
+      if (res?.ok) removeDeletedDonation(donation._id);
     } catch (err) {
-      console.error("Error al eliminar donación:", err);
+      console.error("Error al eliminar donacion:", err);
     }
   };
 
   const updateQuantity = (id, quantity) => {
-    if (quantity < 0) return;
-    setDonations(donations.map((d) => (d._id === id ? { ...d, quantity } : d)));
+    const numericQuantity = Number.parseInt(quantity, 10);
+    const safeQuantity = Number.isInteger(numericQuantity) && numericQuantity > 0
+      ? numericQuantity
+      : 1;
+    const donation = donations.find((item) => getDonationKey(item) === id);
+
+    if (donation?._id) addDirtyDonation(donation._id);
+
+    setDonations((prev) =>
+      prev.map((item) =>
+        getDonationKey(item) === id ? { ...item, quantity: safeQuantity } : item,
+      ),
+    );
   };
 
   const calculateTotal = () =>
-    donations.reduce((sum, d) => sum + d.price * d.quantity, 0);
-  const calculateSubtotal = (d) => d.price * d.quantity;
+    donations.reduce((sum, d) => sum + Number(d.price || 0) * Number(d.quantity || 0), 0);
+  const calculateSubtotal = (d) => Number(d.price || 0) * Number(d.quantity || 0);
 
   const cancelEdit = () => {
-    setEditingId(null);
-    setFormData({
-      name: "",
-      price: 0,
-      quantity: 1,
-      description: "",
-      image: "",
-      size: "",
-    });
+    resetForm();
   };
 
-  // 🔹 Filtrar donaciones usando el searchTerm del Navbar
   const filteredDonations = donations.filter((d) =>
     Object.values(d).some((val) =>
       String(val || "")
         .toLowerCase()
-        .includes((searchTerm || "").toLowerCase())
-    )
+        .includes((searchTerm || "").toLowerCase()),
+    ),
   );
 
   return (

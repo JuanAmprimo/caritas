@@ -24,8 +24,8 @@ export default function DonationForm({ formData, handleInputChange, handleImageU
             <InputGroup.Text>$</InputGroup.Text>
             <Form.Control
               type="number"
-              value={formData.price || ''}
-              onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
+              value={formData.price ?? ''}
+              onChange={(e) => handleInputChange('price', e.target.value === '' ? '' : Number(e.target.value))}
               placeholder="0.00"
               step="1000"
               required
@@ -51,8 +51,8 @@ export default function DonationForm({ formData, handleInputChange, handleImageU
           <Form.Label>Cantidad</Form.Label>
           <Form.Control
             type="number"
-            value={formData.quantity || 1}
-            onChange={(e) => handleInputChange('quantity', parseInt(e.target.value))}
+            value={formData.quantity ?? 1}
+            onChange={(e) => handleInputChange('quantity', e.target.value === '' ? '' : Number.parseInt(e.target.value, 10))}
             placeholder="1"
           />
         </Form.Group>
