@@ -67,7 +67,13 @@ export async function handler(event, context) {
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
     const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
 
-    user.refreshToken = refreshToken;
+    const activeRefreshTokens = Array.isArray(user.refreshTokens) ? user.refreshTokens : [];
+    const tokensToKeep = user.refreshToken
+      ? [...activeRefreshTokens, user.refreshToken]
+      : activeRefreshTokens;
+
+    user.refreshTokens = [...new Set([...tokensToKeep, refreshToken])];
+    user.refreshToken = null;
     await user.save();
     await Log.create({ ip, email, action: 'login', success: true });
 

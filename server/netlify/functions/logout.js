@@ -3,14 +3,31 @@ import User from "../../models/User.js";
 import { connectDB } from "./_db.js";
 import { requireAuth } from "./_auth.js";
 
+function parseCookie(cookieHeader, name) {
+  if (!cookieHeader) return null;
+  return cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split("=")[1] || null;
+}
+
 export async function handler(event, context) {
   try {
     const userId = requireAuth(event);
     await connectDB();
 
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie || "";
+    const refreshToken = parseCookie(cookieHeader, "refreshToken");
     const user = await User.findById(userId);
-    if (user) {
-      user.refreshToken = null;
+    if (user && refreshToken) {
+      const activeRefreshTokens = Array.isArray(user.refreshTokens) ? user.refreshTokens : [];
+      user.refreshTokens = activeRefreshTokens.filter((token) => token !== refreshToken);
+
+      if (user.refreshToken === refreshToken) {
+        user.refreshToken = null;
+      }
+
       await user.save();
     }
 

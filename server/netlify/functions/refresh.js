@@ -35,14 +35,24 @@ export async function handler(event, context) {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ["HS256"] });
     await connectDB();
     const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== refreshToken) {
+    const activeRefreshTokens = Array.isArray(user?.refreshTokens) ? user.refreshTokens : [];
+    const isCurrentSession =
+      activeRefreshTokens.includes(refreshToken) || user?.refreshToken === refreshToken;
+
+    if (!user || !isCurrentSession) {
       return { statusCode: 403, body: JSON.stringify({ error: "Refresh token invalido" }) };
     }
 
     const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
     const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
 
-    user.refreshToken = newRefreshToken;
+    const tokensToKeep = activeRefreshTokens.filter((token) => token !== refreshToken);
+    if (user.refreshToken && user.refreshToken !== refreshToken) {
+      tokensToKeep.push(user.refreshToken);
+    }
+
+    user.refreshTokens = [...new Set([...tokensToKeep, newRefreshToken])];
+    user.refreshToken = null;
     await user.save();
 
     const cookieOptions = [

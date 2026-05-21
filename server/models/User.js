@@ -5,7 +5,8 @@ const UserSchema = new mongoose.Schema({
   email:    { type: String, required: true, unique: true },
   password: { type: String, required: true },
   isBlocked: { type: Boolean, default: false },
-  refreshToken: { type: String, default: null },
+  refreshToken: { type: String, default: null }, // Legacy: used before sessions were stored per device.
+  refreshTokens: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now }
 });
 
