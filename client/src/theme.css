@@ -27,7 +27,7 @@
 }
 
 body {
-  background-image: url('/'); /* 🔹 poné la ruta de tu imagen */
+  background-image: url('/imagen-fondo-caritas.jpeg'); /* 🔹 poné la ruta de tu imagen */
   background-size: cover;        /* 🔹 que cubra toda la pantalla */
   background-repeat: no-repeat;  /* 🔹 que no se repita */
   background-attachment: fixed;  /* 🔹 que quede fija al hacer scroll */
