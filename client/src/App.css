@@ -65,7 +65,26 @@
   color: #000; /* opcional: cambia texto */
 }
 
-#login-dropdown .dropdown-menu {
-  z-index: 3000 !important;
+.app-navbar {
+  position: relative;
+  z-index: 3000;
+  overflow: visible;
+}
+
+.app-navbar .container-fluid,
+.app-navbar .navbar-collapse,
+.app-navbar .navbar-nav {
+  overflow: visible;
+}
+
+.login-nav-dropdown,
+.login-nav-dropdown.show,
+.login-nav-dropdown:hover {
+  z-index: 4000;
+}
+
+.login-nav-dropdown .dropdown-menu,
+.dropdown-menu[aria-labelledby="login-dropdown"] {
+  z-index: 4001 !important;
   position: absolute !important;
 }

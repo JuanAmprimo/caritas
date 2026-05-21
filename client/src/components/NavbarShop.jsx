@@ -43,7 +43,7 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
   };
 
   return (
-    <Navbar expand="lg" className="shadow-sm" style={{ backgroundColor: '#6366f1' }}>
+    <Navbar expand="lg" className="app-navbar shadow-sm" style={{ backgroundColor: '#6366f1' }}>
       <Container fluid>
         <Navbar.Brand
           href="#"
@@ -109,7 +109,7 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
               title={<><User size={22} className="me-1" /> {isLoggedIn ? username || 'Usuario' : 'Ingresar'}</>}
               id="login-dropdown"
               align="end"
-              className="text-white nav-link-custom"
+              className="login-nav-dropdown text-white nav-link-custom"
               renderMenuOnMount={true}
             >
               {!isLoggedIn && <NavDropdown.Item as={NavLink} to="/login">Iniciar Sesión</NavDropdown.Item>}
