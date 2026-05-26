@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import html2pdf from "html2pdf.js";
+import { jsPDF } from "jspdf";
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
 import { Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
@@ -304,40 +304,88 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    // Build a clean HTML representation of the list
-    const tableRows = items
-      .map(
-        (item) =>
-          `<tr>${fields
-            .map((field) => `<td style="border:1px solid #ccc;padding:6px;text-align:left;">${item[field.name] || ""}</td>`)
-            .join("")}</tr>`,
-      )
-      .join("");
+    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let y = margin;
 
-    const tableHeader = fields
-      .map((field) => `<th style="border:1px solid #ccc;padding:8px;background:#8b5cf6;color:white;text-align:left;">${field.name}</th>`)
-      .join("");
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(139, 92, 246); // #8b5cf6
+    doc.text(listTitle || "Lista sin nombre", pageWidth / 2, y, { align: "center" });
+    y += 10;
 
-    const htmlContent = `
-      <div style="font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;">
-        <h1 style="color:#8b5cf6;border-bottom:2px solid #8b5cf6;padding-bottom:10px;">${listTitle || "Lista sin nombre"}</h1>
-        <table style="border-collapse:collapse;width:100%;margin-top:16px;">
-          <thead><tr>${tableHeader}</tr></thead>
-          <tbody>${tableRows || '<tr><td colspan="' + fields.length + '" style="padding:12px;text-align:center;color:#888;">Sin elementos</td></tr>'}</tbody>
-        </table>
-        <p style="margin-top:20px;font-size:12px;color:#888;">Generado el ${new Date().toLocaleString("es-AR")}</p>
-      </div>
-    `;
+    // Line separator
+    doc.setDrawColor(139, 92, 246);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
 
-    const opt = {
-      margin:       0.5,
-      filename:     `${listTitle.trim() || "lista"}.pdf`,
-      image:        { type: "jpeg", quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: "in", format: "a4", orientation: "portrait" },
-    };
+    if (fields.length > 0) {
+      // Draw table
+      const colWidth = (pageWidth - 2 * margin) / fields.length;
+      const rowHeight = 8;
 
-    html2pdf().set(opt).from(htmlContent).save();
+      // Header background
+      doc.setFillColor(139, 92, 246);
+      doc.rect(margin, y - 4, pageWidth - 2 * margin, rowHeight, "F");
+
+      // Header text
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      fields.forEach((field, i) => {
+        doc.text(field.name, margin + colWidth * i + 2, y + 2);
+      });
+      y += rowHeight;
+
+      // Items rows
+      doc.setTextColor(0, 0, 0);
+      if (items.length === 0) {
+        doc.setFontSize(10);
+        doc.setTextColor(136, 136, 136);
+        doc.text("Sin elementos", pageWidth / 2, y + 5, { align: "center" });
+        y += rowHeight;
+      } else {
+        items.forEach((item) => {
+          // Check if we need a new page
+          if (y + rowHeight > 290) {
+            doc.addPage();
+            y = margin;
+          }
+
+          // Alternating row color
+          doc.setFillColor(245, 245, 245);
+          doc.rect(margin, y - 4, pageWidth - 2 * margin, rowHeight, "F");
+
+          // Cell borders
+          doc.setDrawColor(200, 200, 200);
+          fields.forEach((field, i) => {
+            doc.rect(margin + colWidth * i, y - 4, colWidth, rowHeight, "S");
+          });
+
+          // Cell text
+          doc.setFontSize(9);
+          doc.setTextColor(0, 0, 0);
+          fields.forEach((field, i) => {
+            const val = item[field.name] || "";
+            doc.text(String(val), margin + colWidth * i + 2, y + 2);
+          });
+          y += rowHeight;
+        });
+      }
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(136, 136, 136);
+      doc.text("No se definieron campos para esta lista", pageWidth / 2, y + 5, { align: "center" });
+    }
+
+    // Footer
+    y = Math.max(y + 10, 280);
+    doc.setFontSize(8);
+    doc.setTextColor(136, 136, 136);
+    doc.text(`Generado el ${new Date().toLocaleString("es-AR")}`, pageWidth / 2, y, { align: "center" });
+
+    doc.save(`${listTitle.trim() || "lista"}.pdf`);
   };
 
   const filteredItems = items.filter((item) =>
