@@ -44,33 +44,13 @@ export async function handler(event, context) {
     }
 
     const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
 
-    const tokensToKeep = activeRefreshTokens.filter((token) => token !== refreshToken);
-    if (user.refreshToken && user.refreshToken !== refreshToken) {
-      tokensToKeep.push(user.refreshToken);
-    }
-
-    user.refreshTokens = [...new Set([...tokensToKeep, newRefreshToken])];
-    user.refreshToken = null;
-    await user.save();
-
-    const cookieOptions = [
-      `refreshToken=${newRefreshToken}`,
-      "HttpOnly",
-      "Path=/",
-      "Max-Age=2592000",
-      "SameSite=Strict",
-    ];
-    if (process.env.NODE_ENV === "production") {
-      cookieOptions.push("Secure");
-    }
+    // 🔹 NO rotamos el refresh token. Lo dejamos igual hasta que expire naturalmente (30 días).
+    // Esto evita que múltiples tabs/pestañas se invaliden entre sí.
+    // Solo reenviamos la misma cookie que ya está en el navegador.
 
     return {
       statusCode: 200,
-      headers: {
-        "Set-Cookie": cookieOptions.join("; "),
-      },
       body: JSON.stringify({ message: "Access token renovado", accessToken: newAccessToken }),
     };
   } catch (err) {

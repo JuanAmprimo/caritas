@@ -20,6 +20,24 @@ export default function App() {
 
     let cancelled = false;
 
+    const refreshSession = async () => {
+      if (cancelled) return;
+
+      try {
+        await refreshAccessToken();
+      } catch (err) {
+        // Si falla el refresh, la sesión expiró → limpiamos y redirigimos
+        clearTokens();
+        localStorage.removeItem('username');
+        localStorage.removeItem('userId');
+        if (!cancelled) {
+          setIsLoggedIn(false);
+          setUsername('');
+          window.location.href = '/login';
+        }
+      }
+    };
+
     const keepSessionAlive = async () => {
       if (cancelled || document.visibilityState !== 'visible') return;
 
@@ -41,19 +59,17 @@ export default function App() {
       }
     };
 
-    const refreshSession = async () => {
-      if (cancelled || document.visibilityState !== 'visible') return;
+    // 🔹 1. Silent re-login inmediato: al abrir la página, renovamos el accessToken
+    refreshSession();
 
-      try {
-        await refreshAccessToken();
-      } catch (err) {
-        console.error('Error al refrescar sesión en segundo plano:', err);
-      }
-    };
-
+    // 🔹 2. Verificamos que la cuenta exista
     keepSessionAlive();
-    const keepAliveInterval = setInterval(keepSessionAlive, 10 * 60 * 1000); // cada 10 minutos
-    const refreshInterval = setInterval(refreshSession, 50 * 60 * 1000); // cada 50 minutos
+
+    // 🔹 3. Renovamos el accessToken cada 50 minutos (antes de que expire a la hora)
+    const refreshInterval = setInterval(refreshSession, 50 * 60 * 1000);
+
+    // 🔹 4. Verificamos que la cuenta siga existiendo cada 10 minutos
+    const keepAliveInterval = setInterval(keepSessionAlive, 10 * 60 * 1000);
 
     return () => {
       cancelled = true;

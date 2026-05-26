@@ -36,7 +36,7 @@ export async function handler(event, context) {
       "HttpOnly",
       "Path=/",
       "Max-Age=0",
-      "SameSite=Strict",
+      "SameSite=Lax",
     ];
     if (process.env.NODE_ENV === "production") {
       cookieOptions.push("Secure");
