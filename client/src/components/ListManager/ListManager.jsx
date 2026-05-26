@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
+import html2pdf from "html2pdf.js";
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
 import { Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
@@ -297,6 +298,48 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
+  const downloadPDF = () => {
+    if (!listTitle.trim() && !fields.length && !items.length) {
+      alert("No hay datos para descargar.");
+      return;
+    }
+
+    // Build a clean HTML representation of the list
+    const tableRows = items
+      .map(
+        (item) =>
+          `<tr>${fields
+            .map((field) => `<td style="border:1px solid #ccc;padding:6px;text-align:left;">${item[field.name] || ""}</td>`)
+            .join("")}</tr>`,
+      )
+      .join("");
+
+    const tableHeader = fields
+      .map((field) => `<th style="border:1px solid #ccc;padding:8px;background:#8b5cf6;color:white;text-align:left;">${field.name}</th>`)
+      .join("");
+
+    const htmlContent = `
+      <div style="font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;">
+        <h1 style="color:#8b5cf6;border-bottom:2px solid #8b5cf6;padding-bottom:10px;">${listTitle || "Lista sin nombre"}</h1>
+        <table style="border-collapse:collapse;width:100%;margin-top:16px;">
+          <thead><tr>${tableHeader}</tr></thead>
+          <tbody>${tableRows || '<tr><td colspan="' + fields.length + '" style="padding:12px;text-align:center;color:#888;">Sin elementos</td></tr>'}</tbody>
+        </table>
+        <p style="margin-top:20px;font-size:12px;color:#888;">Generado el ${new Date().toLocaleString("es-AR")}</p>
+      </div>
+    `;
+
+    const opt = {
+      margin:       0.5,
+      filename:     `${listTitle.trim() || "lista"}.pdf`,
+      image:        { type: "jpeg", quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: "in", format: "a4", orientation: "portrait" },
+    };
+
+    html2pdf().set(opt).from(htmlContent).save();
+  };
+
   const filteredItems = items.filter((item) =>
     Object.values(item).some((val) =>
       String(val).toLowerCase().includes(searchTerm.toLowerCase()),
@@ -542,15 +585,24 @@ export default function ListManager({ searchTerm }) {
             </Col>
           </Row>
 
-          {/* Guardar lista */}
-          <Button
-            className="list-button fw-semibold mt-3"
-            style={{ backgroundColor: "#10b981", borderColor: "#10b981" }}
-            onClick={saveList}
-          >
-            Guardar Lista
-          </Button>
-          <div className="mt-2 text-muted small">{autoSaveStatus}</div>
+          {/* Guardar lista y Descargar lista */}
+          <div className="d-flex gap-2 align-items-start mt-3">
+            <Button
+              className="list-button fw-semibold"
+              style={{ backgroundColor: "#10b981", borderColor: "#10b981" }}
+              onClick={saveList}
+            >
+              Guardar Lista
+            </Button>
+            <Button
+              className="list-button fw-semibold"
+              style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
+              onClick={downloadPDF}
+            >
+              Descargar Lista
+            </Button>
+            <div className="text-muted small align-self-center">{autoSaveStatus}</div>
+          </div>
         </Card.Body>
       </Card>
 
