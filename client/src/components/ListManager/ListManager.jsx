@@ -481,6 +481,11 @@ export default function ListManager({ searchTerm }) {
 
   const loadList = async (list) => {
     try {
+      // Cancelar cualquier autoguardado pendiente antes de cargar
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
       isLoadingList.current = true;
       const res = await apiFetch(`/.netlify/functions/getListById/${list._id}`, { method: "GET" });
       const data = await res.json();
