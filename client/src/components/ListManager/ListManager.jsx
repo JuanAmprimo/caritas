@@ -507,8 +507,9 @@ export default function ListManager({ searchTerm }) {
   };
 
   // ═════════════════════════════════════════════════
-  // Autoguardado: SOLO actualiza la lista que se está
-  // editando (currentListId). NUNCA busca por nombre.
+  // Autoguardado: SOLO actualiza fields e items de la lista
+  // que se está editando (currentListId). NO actualiza el título.
+  // El título solo se cambia con el botón "Guardar Lista".
   // ═════════════════════════════════════════════════
   const updateList = useCallback(async (showAlerts = false) => {
     if (saveTimer.current) {
@@ -516,7 +517,7 @@ export default function ListManager({ searchTerm }) {
       saveTimer.current = null;
     }
 
-    if (!fields.length && !items.length && !listTitle.trim()) {
+    if (!fields.length && !items.length) {
       setAutoSaveStatus("Sin cambios");
       return null;
     }
@@ -527,13 +528,12 @@ export default function ListManager({ searchTerm }) {
       return null;
     }
 
-    const trimmedTitle = listTitle.trim();
-
     try {
+      // Solo enviamos fields e items, SIN el título
       const res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, fields, items }),
+        body: JSON.stringify({ fields, items }),
       });
 
       const data = await res.json();
@@ -556,7 +556,7 @@ export default function ListManager({ searchTerm }) {
       setAutoSaveStatus("Error al guardar");
       return null;
     }
-  }, [currentListId, fields, items, listTitle]);
+  }, [currentListId, fields, items]);
 
   useEffect(() => {
     if (ignoreNextAutoSave.current) {
