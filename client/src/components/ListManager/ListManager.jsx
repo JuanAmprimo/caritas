@@ -550,38 +550,52 @@ export default function ListManager({ searchTerm }) {
     }
 
     try {
-      // Buscar si ya existe una lista en MongoDB con ese nombre
-      const existingList = lists.find(
-        (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
-      );
-
       let res;
-      if (existingList) {
-        // Ya existe → actualizar (solo fields e items, sin título)
-        res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
+      // Prioridad: si tenemos currentListId, actualizamos esa lista directamente
+      if (currentListId) {
+        res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fields, items }),
         });
       } else {
-        // No existe → crear nueva lista en MongoDB
-        res = await apiFetch(`/.netlify/functions/createList`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
-        });
+        // Sin currentListId: buscar por nombre para decidir si crear o actualizar
+        const existingList = lists.find(
+          (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
+        );
+        if (existingList) {
+          res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fields, items }),
+          });
+        } else {
+          res = await apiFetch(`/.netlify/functions/createList`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
+          });
+        }
       }
 
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
-        if (existingList) {
-          setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
-          setCurrentListId(existingList._id);
+        if (currentListId) {
+          setLists((prev) => prev.map((l) => (l._id === currentListId ? data : l)));
         } else {
-          setLists((prev) => [...prev, data]);
-          setCurrentListId(data._id);
-          originalTitleRef.current = trimmedTitle;
+          // Si se creó una nueva, actualizamos currentListId
+          const existingList = lists.find(
+            (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
+          );
+          if (existingList) {
+            setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
+            setCurrentListId(existingList._id);
+          } else {
+            setLists((prev) => [...prev, data]);
+            setCurrentListId(data._id);
+            originalTitleRef.current = trimmedTitle;
+          }
         }
         setAutoSaveStatus(showAlerts ? "Guardado ✅" : "Guardado automáticamente");
         return data;
@@ -594,7 +608,7 @@ export default function ListManager({ searchTerm }) {
       setAutoSaveStatus("Error al guardar");
       return null;
     }
-  }, [lists, draftKey, fields, items, listTitle]);
+  }, [currentListId, lists, draftKey, fields, items, listTitle]);
 
   useEffect(() => {
     if (ignoreNextAutoSave.current) {
