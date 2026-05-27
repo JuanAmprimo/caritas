@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
-import { Plus } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import FieldBadge from "./FieldBadge";
 import AddFieldModal from "./AddFieldModal";
 import EditItemModal from "./EditItemModal";
@@ -32,6 +32,8 @@ export default function ListManager({ searchTerm }) {
   const [draftKey, setDraftKey] = useState(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
+  const [autoExpanded, setAutoExpanded] = useState(true);
+  const [savedExpanded, setSavedExpanded] = useState(true);
 
   const draftStorageKey = useRef(getScopedStorageKey());
   const saveTimer = useRef(null);
@@ -164,32 +166,36 @@ export default function ListManager({ searchTerm }) {
     showEditItem,
   ]);
 
-  // Traer todas las listas desde MongoDB
+  // Traer todas las listas desde MongoDB (usando ref para evitar stale closures)
+  const autoListsRef = useRef([]);
+  const listsRef = useRef([]);
+
   useEffect(() => {
     const fetchLists = async () => {
       try {
         const res = await apiFetch(`/.netlify/functions/getLists`, { method: "GET" });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
-          // Separar autoguardadas de las guardadas manualmente
-          // isAutosaved=true → borradores autoguardados
-          // isAutosaved=false (o sin flag) → guardadas con botón
           const auto = data
             .filter((l) => l.isAutosaved)
-            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // más vieja primero
-          const saved = data
-            .filter((l) => !l.isAutosaved);
+            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          const saved = data.filter((l) => !l.isAutosaved);
           setAutoLists(auto);
           setLists(saved);
+          autoListsRef.current = auto;
+          listsRef.current = saved;
         } else {
-          console.error("Error al cargar listas:", data.error || data);
           setLists([]);
           setAutoLists([]);
+          autoListsRef.current = [];
+          listsRef.current = [];
         }
       } catch (err) {
         console.error("Error de conexión:", err);
         setLists([]);
         setAutoLists([]);
+        autoListsRef.current = [];
+        listsRef.current = [];
       }
     };
 
@@ -241,13 +247,11 @@ export default function ListManager({ searchTerm }) {
 
     const trimmedTitle = listTitle.trim();
 
-    // Buscar si ya existe otra lista guardada con el mismo nombre
-    const existingList = lists.find(
+    const existingList = listsRef.current.find(
       (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
     );
 
     if (existingList) {
-      // Reemplazar
       const res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -257,6 +261,7 @@ export default function ListManager({ searchTerm }) {
       if (res.ok) {
         ignoreNextAutoSave.current = true;
         setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
+        listsRef.current = listsRef.current.map((l) => (l._id === existingList._id ? data : l));
         setCurrentListId(existingList._id);
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
@@ -264,7 +269,6 @@ export default function ListManager({ searchTerm }) {
         alert(data.error || "Error al guardar la lista");
       }
     } else {
-      // Crear nueva
       const res = await apiFetch(`/.netlify/functions/createList`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,6 +278,7 @@ export default function ListManager({ searchTerm }) {
       if (res.ok) {
         ignoreNextAutoSave.current = true;
         setLists((prev) => [...prev, data]);
+        listsRef.current = [...listsRef.current, data];
         setCurrentListId(data._id);
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
@@ -291,8 +296,10 @@ export default function ListManager({ searchTerm }) {
       if (res.ok) {
         if (isAuto) {
           setAutoLists((prev) => prev.filter((l) => l._id !== id));
+          autoListsRef.current = autoListsRef.current.filter((l) => l._id !== id);
         } else {
           setLists((prev) => prev.filter((l) => l._id !== id));
+          listsRef.current = listsRef.current.filter((l) => l._id !== id);
         }
       } else {
         const data = await res.json();
@@ -449,9 +456,13 @@ export default function ListManager({ searchTerm }) {
       isLoadingList.current = true;
       const res = await apiFetch(`/.netlify/functions/getListById/${list._id}`, { method: "GET" });
       const data = await res.json();
+      if (!res.ok) {
+        console.error("Error al cargar lista:", data.error);
+        return;
+      }
       setFields(data.fields || []);
       setItems(data.items || []);
-      // NO tocamos listTitle - dejamos el que el usuario escribió
+      // NO tocamos listTitle
       setCurrentListId(data._id);
       setNewItem({});
       setNewFieldName("");
@@ -488,8 +499,9 @@ export default function ListManager({ searchTerm }) {
     if (!trimmedTitle) return null;
 
     try {
-      // Buscar si ya existe un autoguardado con este título
-      const existingAuto = autoLists.find(
+      // Usar el ref para tener datos actualizados
+      const currentAutoLists = autoListsRef.current;
+      const existingAuto = currentAutoLists.find(
         (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
       );
 
@@ -511,13 +523,15 @@ export default function ListManager({ searchTerm }) {
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
+        // Actualizar tanto state como ref
         setAutoLists((prev) => {
-          // Remover duplicados por título y agregar/actualizar
           const filtered = prev.filter((l) => l._id !== data._id);
           return [...filtered, data].sort(
             (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
           );
         });
+        autoListsRef.current = [...currentAutoLists.filter((l) => l._id !== data._id), data]
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         setCurrentListId(data._id);
         setAutoSaveStatus("Guardado automáticamente");
         return data;
@@ -525,7 +539,7 @@ export default function ListManager({ searchTerm }) {
     } catch (err) {
       console.error("Error al autoguardar:", err);
     }
-  }, [autoLists, draftKey, fields, items, listTitle]);
+  }, [draftKey, fields, items, listTitle]);
 
   useEffect(() => {
     if (ignoreNextAutoSave.current) {
@@ -656,70 +670,86 @@ export default function ListManager({ searchTerm }) {
 
         {/* Columna lateral: listas */}
         <Col md={4}>
-          {/* Autoguardadas */}
-          <Card className="mb-4">
-            <Card.Header style={{ backgroundColor: "#f59e0b", color: "white" }}>
-              <h5 className="mb-0">💾 Borradores Autoguardados</h5>
-            </Card.Header>
-            <Card.Body>
-              {autoLists.length === 0 ? (
-                <p className="text-muted small">No hay borradores. Empezá a escribir arriba.</p>
-              ) : (
-                autoLists.map((list) => (
-                  <div
-                    key={list._id}
-                    className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => loadListData(list)}
-                  >
-                    <span className="fw-bold small">{list.title}</span>
-                    <Button
-                      size="sm"
-                      variant="outline-danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteList(list._id, true);
-                      }}
+          {/* Autoguardadas - colapsable */}
+          <Card className="mb-2">
+            <div
+              style={{ backgroundColor: "#f59e0b", color: "white", cursor: "pointer" }}
+              className="d-flex justify-content-between align-items-center px-3 py-2"
+              onClick={() => setAutoExpanded(!autoExpanded)}
+            >
+              <h5 className="mb-0" style={{ fontSize: "1rem" }}>💾 Borradores Autoguardados</h5>
+              {autoExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </div>
+            {autoExpanded && (
+              <Card.Body className="p-2">
+                {autoLists.length === 0 ? (
+                  <p className="text-muted small mb-0 px-2">No hay borradores.</p>
+                ) : (
+                  autoLists.map((list) => (
+                    <div
+                      key={list._id}
+                      className="d-flex justify-content-between align-items-center mb-1 p-2 border rounded"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => loadListData(list)}
                     >
-                      ×
-                    </Button>
-                  </div>
-                ))
-              )}
-            </Card.Body>
+                      <span className="fw-bold small">{list.title}</span>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        style={{ padding: "0 4px", fontSize: "12px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteList(list._id, true);
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </Card.Body>
+            )}
           </Card>
 
-          {/* Guardadas manualmente */}
-          <Card>
-            <Card.Header style={{ backgroundColor: "#10b981", color: "white" }}>
-              <h5 className="mb-0">📁 Listas Guardadas</h5>
-            </Card.Header>
-            <Card.Body>
-              {lists.length === 0 ? (
-                <p className="text-muted small">No hay listas guardadas.</p>
-              ) : (
-                lists.map((list) => (
-                  <div
-                    key={list._id}
-                    className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => loadListData(list)}
-                  >
-                    <span className="fw-bold small">{list.title}</span>
-                    <Button
-                      size="sm"
-                      variant="outline-danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteList(list._id, false);
-                      }}
+          {/* Guardadas manualmente - colapsable */}
+          <Card className="mb-2">
+            <div
+              style={{ backgroundColor: "#10b981", color: "white", cursor: "pointer" }}
+              className="d-flex justify-content-between align-items-center px-3 py-2"
+              onClick={() => setSavedExpanded(!savedExpanded)}
+            >
+              <h5 className="mb-0" style={{ fontSize: "1rem" }}>📁 Listas Guardadas</h5>
+              {savedExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </div>
+            {savedExpanded && (
+              <Card.Body className="p-2">
+                {lists.length === 0 ? (
+                  <p className="text-muted small mb-0 px-2">No hay listas guardadas.</p>
+                ) : (
+                  lists.map((list) => (
+                    <div
+                      key={list._id}
+                      className="d-flex justify-content-between align-items-center mb-1 p-2 border rounded"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => loadListData(list)}
                     >
-                      ×
-                    </Button>
-                  </div>
-                ))
-              )}
-            </Card.Body>
+                      <span className="fw-bold small">{list.title}</span>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        style={{ padding: "0 4px", fontSize: "12px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteList(list._id, false);
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </Card.Body>
+            )}
           </Card>
         </Col>
       </Row>
