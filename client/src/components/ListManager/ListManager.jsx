@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
 import AddFieldModal from "./AddFieldModal";
 import EditItemModal from "./EditItemModal";
+import VersionHistoryModal from "./VersionHistoryModal";
 import ItemForm from "./ItemForm";
 import ItemTable from "./ItemTable";
 import { apiFetch } from "../../utils/auth.js";
@@ -31,6 +32,8 @@ export default function ListManager({ searchTerm }) {
   const [draftKey, setDraftKey] = useState(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistoryListId, setVersionHistoryListId] = useState(null);
 
   const draftStorageKey = useRef(getScopedStorageKey());
   const saveTimer = useRef(null);
@@ -479,6 +482,19 @@ export default function ListManager({ searchTerm }) {
     ),
   );
 
+  const handleRestoreVersion = (data) => {
+    // Actualizar el estado local con los datos restaurados
+    setFields(data.fields || []);
+    setItems(data.items || []);
+    setListTitle(data.title);
+    originalTitleRef.current = data.title;
+    setCurrentListId(data._id);
+    ignoreNextAutoSave.current = true;
+    setAutoSaveStatus("Versión restaurada");
+    // Actualizar la lista en el array de listas guardadas
+    setLists((prev) => prev.map((l) => (l._id === data._id ? data : l)));
+  };
+
   const loadList = async (list) => {
     try {
       // Cancelar cualquier autoguardado pendiente antes de cargar
@@ -725,14 +741,27 @@ export default function ListManager({ searchTerm }) {
                 >
                   {list.title}
                 </span>
-                <Button
-                  className="list-button fw-semibold"
-                  size="sm"
-                  style={{ backgroundColor: "#ef4444", borderColor: "#ef4444" }}
-                  onClick={() => deleteList(list._id)}
-                >
-                  Eliminar
-                </Button>
+                <div className="d-flex gap-1">
+                  <Button
+                    className="list-button fw-semibold"
+                    size="sm"
+                    style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
+                    onClick={() => {
+                      setVersionHistoryListId(list._id);
+                      setShowVersionHistory(true);
+                    }}
+                  >
+                    Historial
+                  </Button>
+                  <Button
+                    className="list-button fw-semibold"
+                    size="sm"
+                    style={{ backgroundColor: "#ef4444", borderColor: "#ef4444" }}
+                    onClick={() => deleteList(list._id)}
+                  >
+                    Eliminar
+                  </Button>
+                </div>
               </div>
             ))
           ) : (
@@ -742,6 +771,12 @@ export default function ListManager({ searchTerm }) {
       </Card>
 
       {/* Modales */}
+      <VersionHistoryModal
+        show={showVersionHistory}
+        setShow={setShowVersionHistory}
+        listId={versionHistoryListId}
+        onRestore={handleRestoreVersion}
+      />
       <AddFieldModal
         show={showAddField}
         setShow={setShowAddField}
