@@ -36,6 +36,7 @@ export default function ListManager({ searchTerm }) {
   const saveTimer = useRef(null);
   const isLoadingList = useRef(false);
   const ignoreNextAutoSave = useRef(false);
+  const originalTitleRef = useRef(""); // Título con el que se cargó la lista
 
   useEffect(() => {
     const scopedDraft = localStorage.getItem(draftStorageKey.current);
@@ -228,6 +229,7 @@ export default function ListManager({ searchTerm }) {
     }
 
     const trimmedTitle = listTitle.trim();
+    const titleChanged = currentListId && trimmedTitle.toLowerCase() !== originalTitleRef.current.toLowerCase();
 
     // Buscar si ya existe otra lista guardada con el mismo nombre
     // (que no sea la que estamos editando actualmente)
@@ -249,13 +251,14 @@ export default function ListManager({ searchTerm }) {
         ignoreNextAutoSave.current = true;
         setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
         setCurrentListId(existingList._id);
+        originalTitleRef.current = trimmedTitle;
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
       } else {
         alert(data.error || "Error al guardar la lista");
       }
-    } else if (currentListId) {
-      // Estamos editando una lista existente y el nombre no coincide con otra → actualizamos la misma
+    } else if (currentListId && !titleChanged) {
+      // Mismo título, misma lista → actualizar la existente
       const res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -279,6 +282,7 @@ export default function ListManager({ searchTerm }) {
           ignoreNextAutoSave.current = true;
           setLists((prev) => [...prev, createData]);
           setCurrentListId(createData._id);
+          originalTitleRef.current = trimmedTitle;
           setAutoSaveStatus("Lista guardada ✅");
           alert("Lista guardada con éxito ✅");
         } else {
@@ -288,7 +292,8 @@ export default function ListManager({ searchTerm }) {
         alert(data.error || "Error al guardar la lista");
       }
     } else {
-      // No estamos editando ninguna lista (nueva desde cero) → crear
+      // El título cambió o estamos desde cero → CREAR una nueva lista
+      // (así no pisamos la lista original cuando cambiamos el nombre)
       const res = await apiFetch(`/.netlify/functions/createList`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -299,6 +304,7 @@ export default function ListManager({ searchTerm }) {
         ignoreNextAutoSave.current = true;
         setLists((prev) => [...prev, data]);
         setCurrentListId(data._id);
+        originalTitleRef.current = trimmedTitle;
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
       } else {
@@ -488,6 +494,7 @@ export default function ListManager({ searchTerm }) {
       setFields(data.fields || []);
       setItems(data.items || []);
       setListTitle(data.title);
+      originalTitleRef.current = data.title; // Guardamos el título original
       setCurrentListId(data._id);
       setNewItem({});
       setNewFieldName("");
