@@ -79,9 +79,7 @@ export default function ListManager({ searchTerm }) {
     }
   }, []);
 
-  // ════════════════════════════════════════════════════
-  // AUTOGUARDADO EN LOCALSTORAGE (siempre)
-  // ════════════════════════════════════════════════════
+  // Autoguardado en localStorage
   useEffect(() => {
     if (!draftKey) return;
     try {
@@ -165,7 +163,7 @@ export default function ListManager({ searchTerm }) {
     showEditItem,
   ]);
 
-  // 🔹 Traer listas desde MongoDB (Netlify Functions)
+  // Traer listas desde MongoDB
   useEffect(() => {
     const fetchLists = async () => {
       try {
@@ -221,7 +219,7 @@ export default function ListManager({ searchTerm }) {
   };
 
   // ═══════════════════════════════════════════════════════
-  // SAVE LIST: guardado manual (botón)
+  // Botón Guardar Lista (guardado manual)
   // ═══════════════════════════════════════════════════════
   const saveList = async () => {
     if (!listTitle.trim() && !fields.length && !items.length) {
@@ -229,7 +227,84 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    await updateList(true, true);
+    const trimmedTitle = listTitle.trim();
+
+    // Buscar si ya existe otra lista guardada con el mismo nombre
+    // (que no sea la que estamos editando actualmente)
+    const existingList = lists.find(
+      (l) =>
+        l.title.toLowerCase() === trimmedTitle.toLowerCase() &&
+        l._id !== currentListId
+    );
+
+    if (existingList) {
+      // Otra lista ya tiene ese nombre → la reemplazamos
+      const res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, fields, items }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        ignoreNextAutoSave.current = true;
+        setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
+        setCurrentListId(existingList._id);
+        setAutoSaveStatus("Lista guardada ✅");
+        alert("Lista guardada con éxito ✅");
+      } else {
+        alert(data.error || "Error al guardar la lista");
+      }
+    } else if (currentListId) {
+      // Estamos editando una lista existente y el nombre no coincide con otra → actualizamos la misma
+      const res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, fields, items }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        ignoreNextAutoSave.current = true;
+        setLists((prev) => prev.map((l) => (l._id === currentListId ? data : l)));
+        setAutoSaveStatus("Lista guardada ✅");
+        alert("Lista guardada con éxito ✅");
+      } else if (res.status === 404) {
+        // La lista fue eliminada en otro lado, crear nueva
+        const createRes = await apiFetch(`/.netlify/functions/createList`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
+        });
+        const createData = await createRes.json();
+        if (createRes.ok) {
+          ignoreNextAutoSave.current = true;
+          setLists((prev) => [...prev, createData]);
+          setCurrentListId(createData._id);
+          setAutoSaveStatus("Lista guardada ✅");
+          alert("Lista guardada con éxito ✅");
+        } else {
+          alert(createData.error || "Error al guardar la lista");
+        }
+      } else {
+        alert(data.error || "Error al guardar la lista");
+      }
+    } else {
+      // No estamos editando ninguna lista (nueva desde cero) → crear
+      const res = await apiFetch(`/.netlify/functions/createList`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        ignoreNextAutoSave.current = true;
+        setLists((prev) => [...prev, data]);
+        setCurrentListId(data._id);
+        setAutoSaveStatus("Lista guardada ✅");
+        alert("Lista guardada con éxito ✅");
+      } else {
+        alert(data.error || "Error al guardar la lista");
+      }
+    }
   };
 
   const deleteList = async (id) => {
@@ -431,11 +506,11 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  // ═══════════════════════════════════════════════════════════
-  // updateList: guarda en MongoDB usando el NOMBRE para decidir
-  // si actualiza o crea. Tanto autoguardado como manual usan esto.
-  // ═══════════════════════════════════════════════════════════
-  const updateList = useCallback(async (showAlerts = false, allowCreate = true) => {
+  // ═════════════════════════════════════════════════
+  // Autoguardado: SOLO actualiza la lista que se está
+  // editando (currentListId). NUNCA busca por nombre.
+  // ═════════════════════════════════════════════════
+  const updateList = useCallback(async (showAlerts = false) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -446,92 +521,42 @@ export default function ListManager({ searchTerm }) {
       return null;
     }
 
-    const trimmedTitle = listTitle.trim();
-
-    // Buscar por nombre entre las listas guardadas
-    const existingList = lists.find(
-      (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
-    );
-
-    // Si no se permite crear y no existe lista con ese nombre, solo guardamos local
-    if (!allowCreate && !existingList) {
-      setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
+    // Si no hay lista cargada, solo guardamos en localStorage
+    if (!currentListId) {
+      setAutoSaveStatus("Guardado automáticamente (borrador)");
       return null;
     }
 
+    const trimmedTitle = listTitle.trim();
+
     try {
-      let res;
-      if (existingList) {
-        // Mismo nombre → actualizar la existente
-        res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: trimmedTitle, fields, items }),
-        });
-      } else {
-        // Nombre nuevo → crear
-        res = await apiFetch(`/.netlify/functions/createList`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
-        });
-      }
+      const res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, fields, items }),
+      });
 
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
-        if (existingList) {
-          setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
-          setCurrentListId(existingList._id);
-        } else {
-          setLists((prev) => [...prev, data]);
-          setCurrentListId(data._id);
-        }
-        setAutoSaveStatus(showAlerts ? "Lista guardada ✅" : "Guardado automáticamente");
-        if (showAlerts) alert("Lista guardada con éxito ✅");
+        setLists((prev) => prev.map((l) => (l._id === currentListId ? data : l)));
+        setAutoSaveStatus(showAlerts ? "Guardado ✅" : "Guardado automáticamente");
         return data;
-      } else if (res.status === 404 && existingList) {
-        // La lista existente fue eliminada en otro lado → crear de nuevo
-        if (!allowCreate) {
-          setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
-          return null;
-        }
-        try {
-          const createRes = await apiFetch(`/.netlify/functions/createList`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
-          });
-          const createData = await createRes.json();
-          if (createRes.ok) {
-            setLists((prev) => [...prev, createData]);
-            setCurrentListId(createData._id);
-            ignoreNextAutoSave.current = true;
-            setAutoSaveStatus(showAlerts ? "Lista guardada ✅" : "Guardado automáticamente");
-            if (showAlerts) alert("Lista guardada con éxito ✅");
-            return createData;
-          } else {
-            if (showAlerts) alert(createData.error || "Error al guardar la lista");
-            setAutoSaveStatus("Error al guardar");
-            return null;
-          }
-        } catch (err2) {
-          console.error("Error creando lista tras 404:", err2);
-          setAutoSaveStatus("Error al guardar");
-          if (showAlerts) alert("Error al guardar la lista");
-          return null;
-        }
+      } else if (res.status === 404) {
+        // La lista fue eliminada en otro lado, limpiar
+        setCurrentListId(null);
+        setAutoSaveStatus("Guardado automáticamente (borrador)");
+        return null;
       } else {
-        if (showAlerts) alert(data.error || "Error al guardar la lista");
         setAutoSaveStatus("Error al guardar");
         return null;
       }
     } catch (err) {
-      console.error("Error al actualizar lista:", err);
+      console.error("Error al autoguardar:", err);
       setAutoSaveStatus("Error al guardar");
       return null;
     }
-  }, [lists, draftKey, fields, items, listTitle]);
+  }, [currentListId, fields, items, listTitle]);
 
   useEffect(() => {
     if (ignoreNextAutoSave.current) {
@@ -548,9 +573,7 @@ export default function ListManager({ searchTerm }) {
 
     saveTimer.current = setTimeout(() => {
       setAutoSaveStatus("Guardando...");
-      // Autoguardado: allowCreate=false → solo actualiza listas ya existentes,
-      // no crea nuevas automáticamente. Para crear hay que usar "Guardar Lista".
-      updateList(false, false);
+      updateList(false);
     }, 900);
 
     return () => {
