@@ -29,30 +29,13 @@ export async function handler(event, context) {
       return { statusCode: 403, body: JSON.stringify({ error: "No tienes permiso para modificar esta lista" }) };
     }
 
-    // Guardar versión anterior antes de modificar (como snapshot - deep clone)
-    const snapshot = {
-      title: list.title,
-      fields: JSON.parse(JSON.stringify(list.fields)),
-      items: JSON.parse(JSON.stringify(list.items)),
-      timestamp: new Date(),
-    };
+    const updates = {};
+    if (typeof parsedBody.title === "string" && parsedBody.title.trim()) updates.title = parsedBody.title.trim();
+    if (Array.isArray(parsedBody.fields)) updates.fields = parsedBody.fields;
+    if (Array.isArray(parsedBody.items)) updates.items = parsedBody.items;
+    if (typeof parsedBody.isAutosaved === "boolean") updates.isAutosaved = parsedBody.isAutosaved;
 
-    const updates = { $push: { versions: snapshot } };
-
-    // Incrementar currentVersion
-    updates.$inc = { currentVersion: 1 };
-
-    if (typeof parsedBody.title === "string" && parsedBody.title.trim()) {
-      updates.title = parsedBody.title.trim();
-    }
-    if (Array.isArray(parsedBody.fields)) {
-      updates.fields = parsedBody.fields;
-    }
-    if (Array.isArray(parsedBody.items)) {
-      updates.items = parsedBody.items;
-    }
-
-    if (Object.keys(updates).length <= 2) { // solo $push y $inc, sin campos
+    if (Object.keys(updates).length === 0) {
       return { statusCode: 400, body: JSON.stringify({ error: "No se proporcionaron campos válidos para actualizar." }) };
     }
 

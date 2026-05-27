@@ -19,6 +19,7 @@ export async function handler(event, context) {
     const fields = Array.isArray(parsedBody.fields) ? parsedBody.fields : [];
     const items = Array.isArray(parsedBody.items) ? parsedBody.items : [];
     const draftKey = String(parsedBody.draftKey || "").trim();
+    const isAutosaved = Boolean(parsedBody.isAutosaved);
 
     if (!title) {
       return { statusCode: 400, body: JSON.stringify({ error: "El título de la lista es obligatorio." }) };
@@ -27,13 +28,13 @@ export async function handler(event, context) {
     if (draftKey) {
       const updatedList = await List.findOneAndUpdate(
         { userId, draftKey },
-        { title, userId, fields, items, draftKey },
+        { title, userId, fields, items, draftKey, isAutosaved },
         { new: true, upsert: true, setDefaultsOnInsert: true },
       );
       return { statusCode: 201, body: JSON.stringify(updatedList) };
     }
 
-    const newList = new List({ title, userId, fields, items });
+    const newList = new List({ title, userId, fields, items, isAutosaved });
     await newList.save();
     return { statusCode: 201, body: JSON.stringify(newList) };
   } catch (err) {
