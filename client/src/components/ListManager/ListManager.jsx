@@ -79,6 +79,9 @@ export default function ListManager({ searchTerm }) {
     }
   }, []);
 
+  // ════════════════════════════════════════════════════
+  // AUTOGUARDADO: SOLO en localStorage, NUNCA en backend
+  // ════════════════════════════════════════════════════
   useEffect(() => {
     if (!draftKey) return;
     try {
@@ -217,6 +220,9 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
+  // ═══════════════════════════════════════════════════════
+  // GUARDADO MANUAL: es el UNICO que modifica el backend
+  // ═══════════════════════════════════════════════════════
   const saveList = async () => {
     if (!listTitle.trim() && !fields.length && !items.length) {
       alert("Agrega campos o un título antes de guardar.");
@@ -230,21 +236,40 @@ export default function ListManager({ searchTerm }) {
       (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
     );
 
+    let res;
     if (existingList) {
-      if (existingList._id === currentListId) {
-        // Es la misma lista que estamos editando → actualizarla
-        await updateList(true, true);
-      } else {
-        // Es otra lista con el mismo nombre → reemplazarla
-        setCurrentListId(existingList._id);
-        await updateList(true, true, existingList._id);
-      }
+      // Mismo nombre → actualizar la existente
+      res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, fields, items }),
+      });
     } else {
-      // No existe ninguna lista con ese nombre → crear una nueva
-      // Si currentListId está seteado (estábamos editando una lista con otro nombre),
-      // forzamos a null para que se cree una nueva en vez de actualizar la vieja
-      setCurrentListId(null);
-      await updateList(true, true, null);
+      // Nombre diferente → crear nueva
+      res = await apiFetch(`/.netlify/functions/createList`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey }),
+      });
+    }
+
+    const data = await res.json();
+    if (res.ok) {
+      ignoreNextAutoSave.current = true;
+      if (existingList) {
+        // Reemplazar en la lista local
+        setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
+        setCurrentListId(existingList._id);
+      } else {
+        // Agregar la nueva lista
+        setLists((prev) => [...prev, data]);
+        setCurrentListId(data._id);
+      }
+      setAutoSaveStatus("Lista guardada ✅");
+      alert("Lista guardada con éxito ✅");
+    } else {
+      alert(data.error || "Error al guardar la lista");
+      setAutoSaveStatus("Error al guardar");
     }
   };
 
@@ -256,6 +281,13 @@ export default function ListManager({ searchTerm }) {
 
       if (res.ok) {
         setLists(lists.filter((l) => l._id !== id));
+        // Si eliminamos la lista que estamos editando, limpiamos el editor
+        if (id === currentListId) {
+          setCurrentListId(null);
+          setListTitle("");
+          setFields([]);
+          setItems([]);
+        }
       } else {
         const data = await res.json();
         alert(data.error || "Error al eliminar la lista");
@@ -441,7 +473,11 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  const updateList = useCallback(async (showAlerts = false, allowCreate = true, overrideId = undefined) => {
+  // ═══════════════════════════════════════════════════════
+  // updateList SOLO se usa para el autoguardado local
+  // (el useEffect de abajo). No actualiza el backend.
+  // ═══════════════════════════════════════════════════════
+  const updateList = useCallback(async (showAlerts = false, _allowCreate = true) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -452,99 +488,11 @@ export default function ListManager({ searchTerm }) {
       return null;
     }
 
-    // overrideId: undefined → usa currentListId (default)
-    // overrideId: null → fuerza creación de nueva lista
-    // overrideId: string (id) → fuerza actualización de esa lista específica
-    const listId = overrideId !== undefined ? overrideId : currentListId;
-
-    // Si no se permite crear y no existe listId, evitamos llamar al backend.
-    if (!allowCreate && !listId) {
-      setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
-      return null;
-    }
-
-    try {
-      let res;
-      if (listId) {
-        res = await apiFetch(`/.netlify/functions/updateList/${listId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: listTitle, fields, items }),
-        });
-      } else {
-        res = await apiFetch(`/.netlify/functions/createList`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: listTitle.trim() || "Lista sin nombre",
-            fields,
-            items,
-            draftKey,
-          }),
-        });
-      }
-
-      const data = await res.json();
-      if (res.ok) {
-        if (listId) {
-          setLists((prev) => prev.map((l) => (l._id === listId ? data : l)));
-        } else {
-          setLists((prev) => [...prev, data]);
-          setCurrentListId(data._id);
-        }
-        ignoreNextAutoSave.current = true;
-        setAutoSaveStatus(showAlerts ? "Lista guardada ✅" : "Guardado automáticamente");
-
-        if (showAlerts) {
-          alert("Lista guardada con éxito ✅");
-        }
-
-        return data;
-      } else if (res.status === 404 && listId) {
-        if (!allowCreate) {
-          setCurrentListId(null);
-          setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
-          return null;
-        }
-
-        try {
-          const createRes = await apiFetch(`/.netlify/functions/createList`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: listTitle.trim() || "Lista sin nombre", fields, items, draftKey }),
-          });
-          const createData = await createRes.json();
-          if (createRes.ok) {
-            setLists((prev) => [...prev, createData]);
-            setCurrentListId(createData._id);
-            ignoreNextAutoSave.current = true;
-            setAutoSaveStatus(showAlerts ? "Lista guardada ✅" : "Guardado automáticamente");
-            if (showAlerts) alert("Lista guardada con éxito ✅");
-            return createData;
-          } else {
-            if (showAlerts) alert(createData.error || "Error al guardar la lista");
-            setAutoSaveStatus("Error al guardar");
-            return null;
-          }
-        } catch (err2) {
-          console.error("Error creando lista tras 404:", err2);
-          setAutoSaveStatus("Error al guardar");
-          if (showAlerts) alert("Error al guardar la lista");
-          return null;
-        }
-      } else {
-        if (showAlerts) {
-          alert(data.error || "Error al guardar la lista");
-        }
-        setAutoSaveStatus("Error al guardar");
-        return null;
-      }
-    } catch (err) {
-      console.error("Error al actualizar lista:", err);
-      setAutoSaveStatus("Error al guardar");
-      return null;
-    }
-  }, [currentListId, draftKey, fields, items, listTitle]);
+    // El autoguardado SOLO guarda en localStorage y muestra el status
+    // NUNCA modifica el backend
+    setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
+    return null;
+  }, []); // Vacío porque no necesita dependencias del backend
 
   useEffect(() => {
     if (ignoreNextAutoSave.current) {
