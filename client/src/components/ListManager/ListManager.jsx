@@ -223,8 +223,23 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    // Al guardar manualmente permitimos crear la lista en el backend
-    await updateList(true, true);
+    // Si ya existe una lista guardada con el mismo nombre (y no es la que estamos editando actualmente),
+    // la reemplazamos en lugar de crear una nueva
+    const trimmedTitle = listTitle.trim();
+    const existingList = lists.find(
+      (l) =>
+        l.title.toLowerCase() === trimmedTitle.toLowerCase() &&
+        l._id !== currentListId,
+    );
+
+    if (existingList) {
+      // Forzamos la actualización de la lista existente usando overrideId
+      setCurrentListId(existingList._id);
+      await updateList(true, true, existingList._id);
+    } else {
+      // Al guardar manualmente permitimos crear la lista en el backend
+      await updateList(true, true);
+    }
   };
 
   const deleteList = async (id) => {
@@ -420,7 +435,7 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  const updateList = useCallback(async (showAlerts = false, allowCreate = true) => {
+  const updateList = useCallback(async (showAlerts = false, allowCreate = true, overrideId = null) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -431,8 +446,10 @@ export default function ListManager({ searchTerm }) {
       return null;
     }
 
-    // Si no se permite crear y no existe currentListId, evitamos llamar al backend.
-    if (!allowCreate && !currentListId) {
+    const listId = overrideId || currentListId;
+
+    // Si no se permite crear y no existe listId, evitamos llamar al backend.
+    if (!allowCreate && !listId) {
       // Ya se guarda el borrador en localStorage por el efecto; solo actualizamos estado visible
       setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
       return null;
@@ -440,8 +457,8 @@ export default function ListManager({ searchTerm }) {
 
     try {
       let res;
-      if (currentListId) {
-        res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
+      if (listId) {
+        res = await apiFetch(`/.netlify/functions/updateList/${listId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: listTitle, fields, items }),
@@ -461,8 +478,8 @@ export default function ListManager({ searchTerm }) {
 
       const data = await res.json();
       if (res.ok) {
-        if (currentListId) {
-          setLists((prev) => prev.map((l) => (l._id === currentListId ? data : l)));
+        if (listId) {
+          setLists((prev) => prev.map((l) => (l._id === listId ? data : l)));
         } else {
           setLists((prev) => [...prev, data]);
           setCurrentListId(data._id);
@@ -475,7 +492,7 @@ export default function ListManager({ searchTerm }) {
         }
 
         return data;
-      } else if (res.status === 404 && currentListId) {
+      } else if (res.status === 404 && listId) {
         // Lista no encontrada en backend: si es autoguardado, no intentamos crearla remotamente;
         // simplemente limpiamos currentListId y mantenemos el borrador local.
         if (!allowCreate) {
