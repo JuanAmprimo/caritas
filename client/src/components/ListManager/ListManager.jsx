@@ -223,22 +223,28 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    // Si ya existe una lista guardada con el mismo nombre (y no es la que estamos editando actualmente),
-    // la reemplazamos en lugar de crear una nueva
     const trimmedTitle = listTitle.trim();
+
+    // Buscar si ya existe una lista guardada con el mismo nombre
     const existingList = lists.find(
-      (l) =>
-        l.title.toLowerCase() === trimmedTitle.toLowerCase() &&
-        l._id !== currentListId,
+      (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
     );
 
     if (existingList) {
-      // Forzamos la actualización de la lista existente usando overrideId
-      setCurrentListId(existingList._id);
-      await updateList(true, true, existingList._id);
+      if (existingList._id === currentListId) {
+        // Es la misma lista que estamos editando → actualizarla
+        await updateList(true, true);
+      } else {
+        // Es otra lista con el mismo nombre → reemplazarla
+        setCurrentListId(existingList._id);
+        await updateList(true, true, existingList._id);
+      }
     } else {
-      // Al guardar manualmente permitimos crear la lista en el backend
-      await updateList(true, true);
+      // No existe ninguna lista con ese nombre → crear una nueva
+      // Si currentListId está seteado (estábamos editando una lista con otro nombre),
+      // forzamos a null para que se cree una nueva en vez de actualizar la vieja
+      setCurrentListId(null);
+      await updateList(true, true, null);
     }
   };
 
@@ -435,7 +441,7 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  const updateList = useCallback(async (showAlerts = false, allowCreate = true, overrideId = null) => {
+  const updateList = useCallback(async (showAlerts = false, allowCreate = true, overrideId = undefined) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -446,11 +452,13 @@ export default function ListManager({ searchTerm }) {
       return null;
     }
 
-    const listId = overrideId || currentListId;
+    // overrideId: undefined → usa currentListId (default)
+    // overrideId: null → fuerza creación de nueva lista
+    // overrideId: string (id) → fuerza actualización de esa lista específica
+    const listId = overrideId !== undefined ? overrideId : currentListId;
 
     // Si no se permite crear y no existe listId, evitamos llamar al backend.
     if (!allowCreate && !listId) {
-      // Ya se guarda el borrador en localStorage por el efecto; solo actualizamos estado visible
       setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
       return null;
     }
@@ -493,15 +501,12 @@ export default function ListManager({ searchTerm }) {
 
         return data;
       } else if (res.status === 404 && listId) {
-        // Lista no encontrada en backend: si es autoguardado, no intentamos crearla remotamente;
-        // simplemente limpiamos currentListId y mantenemos el borrador local.
         if (!allowCreate) {
           setCurrentListId(null);
           setAutoSaveStatus(showAlerts ? "Guardado local" : "Guardado automáticamente (borrador)");
           return null;
         }
 
-        // Si permitimos crear (guardado manual), intentamos crear la lista en su lugar.
         try {
           const createRes = await apiFetch(`/.netlify/functions/createList`, {
             method: "POST",
@@ -556,7 +561,6 @@ export default function ListManager({ searchTerm }) {
 
     saveTimer.current = setTimeout(() => {
       setAutoSaveStatus("Guardando...");
-      // En autoguardado no crear nuevas listas en el backend: solo actualizar si ya existe
       updateList(false, false);
     }, 900);
 
@@ -683,7 +687,7 @@ export default function ListManager({ searchTerm }) {
               >
                 <span
                   style={{ cursor: "pointer", fontWeight: "bold" }}
-                  onClick={() => loadList(list)} // 🔹 carga la lista al hacer click
+                  onClick={() => loadList(list)}
                 >
                   {list.title}
                 </span>
