@@ -6,6 +6,8 @@ import EditItemModal from "./EditItemModal";
 import ItemForm from "./ItemForm";
 import ItemTable from "./ItemTable";
 import { apiFetch } from "../../utils/auth.js";
+import { useState, useEffect, useRef } from "react";   // ✅ Importar hooks
+import { jsPDF } from "jspdf";       
 
 const DRAFT_STORAGE_KEY = "caritas_autosaved_list";
 
