@@ -1,7 +1,5 @@
-import { useCallback, useState, useEffect, useRef } from "react";
-import { jsPDF } from "jspdf";
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
 import AddFieldModal from "./AddFieldModal";
 import EditItemModal from "./EditItemModal";
@@ -20,7 +18,6 @@ export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
   const [items, setItems] = useState([]);
   const [lists, setLists] = useState([]);
-  const [autoLists, setAutoLists] = useState([]);
   const [listTitle, setListTitle] = useState("");
   const [showAddField, setShowAddField] = useState(false);
   const [showEditItem, setShowEditItem] = useState(false);
@@ -32,8 +29,6 @@ export default function ListManager({ searchTerm }) {
   const [draftKey, setDraftKey] = useState(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
-  const [autoExpanded, setAutoExpanded] = useState(true);
-  const [savedExpanded, setSavedExpanded] = useState(true);
 
   const draftStorageKey = useRef(getScopedStorageKey());
   const saveTimer = useRef(null);
@@ -167,7 +162,6 @@ export default function ListManager({ searchTerm }) {
   ]);
 
   // Traer todas las listas desde MongoDB (usando ref para evitar stale closures)
-  const autoListsRef = useRef([]);
   const listsRef = useRef([]);
 
   useEffect(() => {
@@ -176,25 +170,16 @@ export default function ListManager({ searchTerm }) {
         const res = await apiFetch(`/.netlify/functions/getLists`, { method: "GET" });
         const data = await res.json();
         if (res.ok && Array.isArray(data)) {
-          const auto = data
-            .filter((l) => l.isAutosaved)
-            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
           const saved = data.filter((l) => !l.isAutosaved);
-          setAutoLists(auto);
           setLists(saved);
-          autoListsRef.current = auto;
           listsRef.current = saved;
         } else {
           setLists([]);
-          setAutoLists([]);
-          autoListsRef.current = [];
           listsRef.current = [];
         }
       } catch (err) {
         console.error("Error de conexión:", err);
         setLists([]);
-        setAutoLists([]);
-        autoListsRef.current = [];
         listsRef.current = [];
       }
     };
@@ -288,19 +273,14 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  const deleteList = async (id, isAuto = false) => {
+  const deleteList = async (id) => {
     try {
       const res = await apiFetch(`/.netlify/functions/deleteList/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        if (isAuto) {
-          setAutoLists((prev) => prev.filter((l) => l._id !== id));
-          autoListsRef.current = autoListsRef.current.filter((l) => l._id !== id);
-        } else {
-          setLists((prev) => prev.filter((l) => l._id !== id));
-          listsRef.current = listsRef.current.filter((l) => l._id !== id);
-        }
+        setLists((prev) => prev.filter((l) => l._id !== id));
+        listsRef.current = listsRef.current.filter((l) => l._id !== id);
       } else {
         const data = await res.json();
         alert(data.error || "Error al eliminar la lista");
@@ -481,278 +461,133 @@ export default function ListManager({ searchTerm }) {
     }
   };
 
-  // ════════════════════════════════════════════════
-  // Autoguardado: guarda en MongoDB como borrador
-  // ════════════════════════════════════════════════
-  const updateList = useCallback(async () => {
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
-
-    if (!fields.length && !items.length) {
-      setAutoSaveStatus("Sin cambios");
-      return null;
-    }
-
-    const trimmedTitle = listTitle.trim();
-    if (!trimmedTitle) return null;
-
-    try {
-      // Usar el ref para tener datos actualizados
-      const currentAutoLists = autoListsRef.current;
-      const existingAuto = currentAutoLists.find(
-        (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
-      );
-
-      let res;
-      if (existingAuto) {
-        res = await apiFetch(`/.netlify/functions/updateList/${existingAuto._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fields, items, isAutosaved: true }),
-        });
-      } else {
-        res = await apiFetch(`/.netlify/functions/createList`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey, isAutosaved: true }),
-        });
-      }
-
-      const data = await res.json();
-      if (res.ok) {
-        ignoreNextAutoSave.current = true;
-        // Actualizar tanto state como ref
-        setAutoLists((prev) => {
-          const filtered = prev.filter((l) => l._id !== data._id);
-          return [...filtered, data].sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-          );
-        });
-        autoListsRef.current = [...currentAutoLists.filter((l) => l._id !== data._id), data]
-          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        setCurrentListId(data._id);
-        setAutoSaveStatus("Guardado automáticamente");
-        return data;
-      }
-    } catch (err) {
-      console.error("Error al autoguardar:", err);
-    }
-  }, [draftKey, fields, items, listTitle]);
-
-  useEffect(() => {
-    if (ignoreNextAutoSave.current) {
-      ignoreNextAutoSave.current = false;
-      return;
-    }
-
-    if (isLoadingList.current) return;
-    if (!fields.length && !items.length) return;
-
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-
-    saveTimer.current = setTimeout(() => {
-      setAutoSaveStatus("Guardando...");
-      updateList();
-    }, 900);
-
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-      }
-    };
-  }, [fields, items, listTitle, currentListId, draftKey, updateList]);
 
   return (
     <Container fluid className="py-4">
-      <Row>
-        {/* Columna principal: editor */}
-        <Col md={8}>
-          <Card className="shadow-sm border-0" style={{ backgroundColor: "#15e0e7" }}>
-            <Card.Header style={{ backgroundColor: "#8b5cf6" }} className="text-white">
-              <h4 className="mb-0">📋 Gestor de Listas</h4>
-            </Card.Header>
-            <Card.Body>
-              {/* Campos */}
-              <Row className="mb-4">
-                <Col>
-                  <h5>Campos de la Lista</h5>
-                  <div className="d-flex flex-wrap gap-2 mb-3">
-                    {fields.map((field, index) => (
-                      <FieldBadge
-                        key={field.id}
-                        field={field}
-                        index={index}
-                        moveField={moveField}
-                        dragOverIndex={dragOverFieldIndex}
-                        setDragOverIndex={setDragOverFieldIndex}
-                        removeField={removeField}
-                      />
-                    ))}
-                    <Button
-                      className="list-button fw-semibold"
-                      style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
-                      size="sm"
-                      onClick={() => setShowAddField(true)}
-                    >
-                      <Plus size={16} className="me-1" /> Agregar Campo
-                    </Button>
-                  </div>
-                </Col>
-              </Row>
-
-              {/* Formulario Items */}
-              <ItemForm
-                fields={fields}
-                newItem={newItem}
-                setNewItem={setNewItem}
-                addItem={addItem}
-              />
-
-              {/* Tabla Items */}
-              <div
-                style={{
-                  height: "300px",
-                  overflowY: filteredItems.length > 0 ? "scroll" : "visible",
-                  border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
-                  padding: filteredItems.length > 0 ? "10px" : "0",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                <ItemTable
-                  fields={fields}
-                  items={items}
-                  openEditItem={openEditItem}
-                  deleteItem={deleteItem}
-                  moveItem={moveItem}
-                />
-              </div>
-
-              {/* Nombre de la lista */}
-              <Row className="mb-3 mt-3">
-                <Col>
-                  <label>Nombre de la Lista:</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={listTitle}
-                    onChange={(e) => setListTitle(e.target.value)}
-                    placeholder="Ej: Lista de ropa"
+      <Card className="shadow-sm border-0" style={{ backgroundColor: "#15e0e7" }}>
+        <Card.Header style={{ backgroundColor: "#8b5cf6" }} className="text-white">
+          <h4 className="mb-0">📋 Gestor de Listas</h4>
+        </Card.Header>
+        <Card.Body>
+          {/* Campos */}
+          <Row className="mb-4">
+            <Col>
+              <h5>Campos de la Lista</h5>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                {fields.map((field, index) => (
+                  <FieldBadge
+                    key={field.id}
+                    field={field}
+                    index={index}
+                    moveField={moveField}
+                    dragOverIndex={dragOverFieldIndex}
+                    setDragOverIndex={setDragOverFieldIndex}
+                    removeField={removeField}
                   />
-                </Col>
-              </Row>
-
-              {/* Botones */}
-              <div className="d-flex gap-2 align-items-start mt-3">
-                <Button
-                  className="list-button fw-semibold"
-                  style={{ backgroundColor: "#10b981", borderColor: "#10b981" }}
-                  onClick={saveList}
-                >
-                  Guardar Lista
-                </Button>
+                ))}
                 <Button
                   className="list-button fw-semibold"
                   style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
-                  onClick={downloadPDF}
+                  size="sm"
+                  onClick={() => setShowAddField(true)}
                 >
-                  Descargar Lista
+                  <Plus size={16} className="me-1" /> Agregar Campo
                 </Button>
-                <div className="text-muted small align-self-center">{autoSaveStatus}</div>
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
+            </Col>
+          </Row>
 
-        {/* Columna lateral: listas */}
-        <Col md={4}>
-          {/* Autoguardadas - colapsable */}
-          <Card className="mb-2">
-            <div
-              style={{ backgroundColor: "#f59e0b", color: "white", cursor: "pointer" }}
-              className="d-flex justify-content-between align-items-center px-3 py-2"
-              onClick={() => setAutoExpanded(!autoExpanded)}
-            >
-              <h5 className="mb-0" style={{ fontSize: "1rem" }}>💾 Borradores Autoguardados</h5>
-              {autoExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-            </div>
-            {autoExpanded && (
-              <Card.Body className="p-2">
-                {autoLists.length === 0 ? (
-                  <p className="text-muted small mb-0 px-2">No hay borradores.</p>
-                ) : (
-                  autoLists.map((list) => (
-                    <div
-                      key={list._id}
-                      className="d-flex justify-content-between align-items-center mb-1 p-2 border rounded"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => loadListData(list)}
-                    >
-                      <span className="fw-bold small">{list.title}</span>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        style={{ padding: "0 4px", fontSize: "12px" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteList(list._id, true);
-                        }}
-                      >
-                        ×
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </Card.Body>
-            )}
-          </Card>
+          {/* Formulario Items */}
+          <ItemForm
+            fields={fields}
+            newItem={newItem}
+            setNewItem={setNewItem}
+            addItem={addItem}
+          />
 
-          {/* Guardadas manualmente - colapsable */}
-          <Card className="mb-2">
-            <div
-              style={{ backgroundColor: "#10b981", color: "white", cursor: "pointer" }}
-              className="d-flex justify-content-between align-items-center px-3 py-2"
-              onClick={() => setSavedExpanded(!savedExpanded)}
+          {/* Tabla Items */}
+          <div
+            style={{
+              height: "300px",
+              overflowY: filteredItems.length > 0 ? "scroll" : "visible",
+              border: filteredItems.length > 0 ? "1px solid #ccc" : "none",
+              padding: filteredItems.length > 0 ? "10px" : "0",
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
+            <ItemTable
+              fields={fields}
+              items={items}
+              openEditItem={openEditItem}
+              deleteItem={deleteItem}
+              moveItem={moveItem}
+            />
+          </div>
+
+          {/* Nombre de la lista */}
+          <Row className="mb-3 mt-3">
+            <Col>
+              <label>Nombre de la Lista:</label>
+              <input
+                type="text"
+                className="form-control"
+                value={listTitle}
+                onChange={(e) => setListTitle(e.target.value)}
+                placeholder="Ej: Lista de ropa"
+              />
+            </Col>
+          </Row>
+
+          {/* Botones */}
+          <div className="d-flex gap-2 align-items-start mt-3">
+            <Button
+              className="list-button fw-semibold"
+              style={{ backgroundColor: "#10b981", borderColor: "#10b981" }}
+              onClick={saveList}
             >
-              <h5 className="mb-0" style={{ fontSize: "1rem" }}>📁 Listas Guardadas</h5>
-              {savedExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-            </div>
-            {savedExpanded && (
-              <Card.Body className="p-2">
-                {lists.length === 0 ? (
-                  <p className="text-muted small mb-0 px-2">No hay listas guardadas.</p>
-                ) : (
-                  lists.map((list) => (
-                    <div
-                      key={list._id}
-                      className="d-flex justify-content-between align-items-center mb-1 p-2 border rounded"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => loadListData(list)}
-                    >
-                      <span className="fw-bold small">{list.title}</span>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        style={{ padding: "0 4px", fontSize: "12px" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteList(list._id, false);
-                        }}
-                      >
-                        ×
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </Card.Body>
-            )}
-          </Card>
-        </Col>
-      </Row>
+              Guardar Lista
+            </Button>
+            <Button
+              className="list-button fw-semibold"
+              style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
+              onClick={downloadPDF}
+            >
+              Descargar Lista
+            </Button>
+            <div className="text-muted small align-self-center">{autoSaveStatus}</div>
+          </div>
+
+          {/* Listas Guardadas */}
+          <hr className="my-4" />
+          <h5 className="mb-3">📁 Listas Guardadas</h5>
+          {lists.length === 0 ? (
+            <p className="text-muted small">No hay listas guardadas.</p>
+          ) : (
+            lists.map((list) => (
+              <div
+                key={list._id}
+                className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
+                style={{ cursor: "pointer", backgroundColor: "rgba(255,255,255,0.7)" }}
+                onClick={() => loadListData(list)}
+              >
+                <span className="fw-bold small">{list.title}</span>
+                <Button
+                  size="sm"
+                  variant="outline-danger"
+                  style={{ padding: "0 6px", fontSize: "12px" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteList(list._id);
+                  }}
+                >
+                  ×
+                </Button>
+              </div>
+            ))
+          )}
+        </Card.Body>
+      </Card>
 
       {/* Modales */}
       <AddFieldModal
