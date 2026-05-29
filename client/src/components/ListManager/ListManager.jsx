@@ -442,7 +442,6 @@ export default function ListManager({ searchTerm }) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
-    setFields([]);
     setItems([]);
     setListTitle("");
     setCurrentListId(null);
