@@ -25,7 +25,7 @@ export async function handler(event, context) {
       return { statusCode: 400, body: JSON.stringify({ error: "El título de la lista es obligatorio." }) };
     }
 
-    if (draftKey) {
+    if (isAutosaved && draftKey) {
       const updatedList = await List.findOneAndUpdate(
         { userId, draftKey },
         { title, userId, fields, items, draftKey, isAutosaved },
@@ -34,7 +34,7 @@ export async function handler(event, context) {
       return { statusCode: 201, body: JSON.stringify(updatedList) };
     }
 
-    const newList = new List({ title, userId, fields, items, isAutosaved });
+    const newList = new List({ title, userId, fields, items, draftKey: draftKey || null, isAutosaved });
     await newList.save();
     return { statusCode: 201, body: JSON.stringify(newList) };
   } catch (err) {

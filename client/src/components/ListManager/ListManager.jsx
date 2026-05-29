@@ -11,9 +11,23 @@ import { jsPDF } from "jspdf";
 
 const DRAFT_STORAGE_KEY = "caritas_autosaved_list";
 
+const createDraftKey = () => `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
 const getScopedStorageKey = () => {
   const userId = localStorage.getItem("userId") || "anonymous";
   return `${DRAFT_STORAGE_KEY}:${userId}`;
+};
+
+const normalizeLoadedItems = (loadedItems, listId) => {
+  if (!Array.isArray(loadedItems)) return [];
+
+  return loadedItems.map((item, index) => {
+    const normalizedItem = item && typeof item === "object" ? item : { value: item };
+    return {
+      ...normalizedItem,
+      id: normalizedItem.id || `${listId || "loaded"}_${index}`,
+    };
+  });
 };
 
 export default function ListManager({ searchTerm }) {
@@ -53,7 +67,7 @@ export default function ListManager({ searchTerm }) {
       }
     }
 
-    const loadedDraftKey = parsed?.draftKey || `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const loadedDraftKey = parsed?.draftKey || createDraftKey();
     setDraftKey(loadedDraftKey);
 
     if (
@@ -66,7 +80,7 @@ export default function ListManager({ searchTerm }) {
     ) {
       ignoreNextAutoSave.current = true;
       setFields(parsed.fields || []);
-      setItems(parsed.items || []);
+      setItems(normalizeLoadedItems(parsed.items || [], parsed.currentListId || loadedDraftKey));
       setListTitle(parsed.title || "");
       setCurrentListId(parsed.currentListId || null);
       setNewItem(parsed.newItem || {});
@@ -234,7 +248,10 @@ export default function ListManager({ searchTerm }) {
 
     const trimmedTitle = listTitle.trim();
 
-    const existingList = listsRef.current.find(
+    const currentList = currentListId
+      ? listsRef.current.find((l) => l._id === currentListId)
+      : null;
+    const existingList = currentList || listsRef.current.find(
       (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
     );
 
@@ -247,9 +264,10 @@ export default function ListManager({ searchTerm }) {
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
-        setLists((prev) => prev.map((l) => (l._id === existingList._id ? data : l)));
-        listsRef.current = listsRef.current.map((l) => (l._id === existingList._id ? data : l));
-        setCurrentListId(existingList._id);
+        const nextLists = listsRef.current.map((l) => (l._id === existingList._id ? data : l));
+        setLists(nextLists);
+        listsRef.current = nextLists;
+        setCurrentListId(data._id);
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
       } else {
@@ -259,14 +277,16 @@ export default function ListManager({ searchTerm }) {
       const res = await apiFetch(`/.netlify/functions/createList`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, fields, items, draftKey, isAutosaved: false }),
+        body: JSON.stringify({ title: trimmedTitle, fields, items, isAutosaved: false }),
       });
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
-        setLists((prev) => [...prev, data]);
-        listsRef.current = [...listsRef.current, data];
+        const nextLists = [...listsRef.current.filter((l) => l._id !== data._id), data];
+        setLists(nextLists);
+        listsRef.current = nextLists;
         setCurrentListId(data._id);
+        setDraftKey(createDraftKey());
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
       } else {
@@ -281,8 +301,13 @@ export default function ListManager({ searchTerm }) {
         method: "DELETE",
       });
       if (res.ok) {
-        setLists((prev) => prev.filter((l) => l._id !== id));
-        listsRef.current = listsRef.current.filter((l) => l._id !== id);
+        const nextLists = listsRef.current.filter((l) => l._id !== id);
+        setLists(nextLists);
+        listsRef.current = nextLists;
+        if (currentListId === id) {
+          setCurrentListId(null);
+          setDraftKey(createDraftKey());
+        }
       } else {
         const data = await res.json();
         alert(data.error || "Error al eliminar la lista");
@@ -320,6 +345,25 @@ export default function ListManager({ searchTerm }) {
   const deleteItem = (id) => {
     const updatedItems = items.filter((item) => item.id !== id);
     setItems(updatedItems);
+  };
+
+  const startNewList = () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    setFields([]);
+    setItems([]);
+    setListTitle("");
+    setCurrentListId(null);
+    setDraftKey(createDraftKey());
+    setNewItem({});
+    setNewFieldName("");
+    setNewFieldType("text");
+    setEditingItem(null);
+    setShowAddField(false);
+    setShowEditItem(false);
+    setAutoSaveStatus("Nueva lista");
   };
 
   const moveItem = (fromIndex, toIndex) => {
@@ -427,7 +471,7 @@ export default function ListManager({ searchTerm }) {
   );
 
   // ═══════════════════════════════════════════════════════
-  // Cargar lista: carga campos e items, NO toca el título
+  // Cargar lista: carga campos, items y titulo
   // ═══════════════════════════════════════════════════════
   const loadListData = async (list) => {
     try {
@@ -443,8 +487,8 @@ export default function ListManager({ searchTerm }) {
         return;
       }
       setFields(data.fields || []);
-      setItems(data.items || []);
-      // NO tocamos listTitle
+      setItems(normalizeLoadedItems(data.items || [], data._id));
+      setListTitle(data.title || list.title || "");
       setCurrentListId(data._id);
       setNewItem({});
       setNewFieldName("");
@@ -549,6 +593,13 @@ export default function ListManager({ searchTerm }) {
               onClick={saveList}
             >
               Guardar Lista
+            </Button>
+            <Button
+              className="list-button fw-semibold"
+              variant="outline-secondary"
+              onClick={startNewList}
+            >
+              <Plus size={16} className="me-1" /> Nueva Lista
             </Button>
             <Button
               className="list-button fw-semibold"
