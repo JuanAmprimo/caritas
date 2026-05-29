@@ -1,5 +1,5 @@
 import { Button, ListGroup, Modal } from "react-bootstrap";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 
 const formatDate = (dateValue) => {
   if (!dateValue) return "Sin fecha";
@@ -13,7 +13,7 @@ const formatDate = (dateValue) => {
   });
 };
 
-export default function VersionHistoryModal({ show, onHide, versions, onRestore }) {
+export default function VersionHistoryModal({ show, onHide, versions, onRestore, onDelete }) {
   const sortedVersions = [...(Array.isArray(versions) ? versions : [])].sort(
     (a, b) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0),
   );
@@ -39,14 +39,24 @@ export default function VersionHistoryModal({ show, onHide, versions, onRestore 
                     {formatDate(version.savedAt)} - {version.items?.length || 0} items
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline-primary"
-                  className="d-flex align-items-center gap-1"
-                  onClick={() => onRestore(version)}
-                >
-                  <RotateCcw size={14} /> Restaurar
-                </Button>
+                <div className="d-flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    className="d-flex align-items-center gap-1"
+                    onClick={() => onDelete?.(version)}
+                  >
+                    <Trash2 size={14} /> Eliminar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline-primary"
+                    className="d-flex align-items-center gap-1"
+                    onClick={() => onRestore(version)}
+                  >
+                    <RotateCcw size={14} /> Restaurar
+                  </Button>
+                </div>
               </ListGroup.Item>
             ))}
           </ListGroup>

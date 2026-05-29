@@ -567,6 +567,26 @@ export default function ListManager({ searchTerm }) {
     : null;
   const currentVersionHistory = getVersionHistory(currentList);
 
+  const deleteVersion = async (version) => {
+    if (!currentListId) return;
+    if (!window.confirm("¿Eliminar esta versión del historial?")) return;
+
+    const versionId = version._id || version.savedAt;
+    try {
+      const res = await apiFetch(`/.netlify/functions/deleteVersion/${currentListId}/${versionId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        syncSavedList(data);
+      } else {
+        alert(data.error || "Error al eliminar la versión");
+      }
+    } catch (err) {
+      console.error("Error al eliminar versión:", err);
+    }
+  };
+
   const restoreVersion = (version) => {
     if (!version) return;
 
@@ -790,6 +810,7 @@ export default function ListManager({ searchTerm }) {
         onHide={() => setShowVersionHistory(false)}
         versions={currentVersionHistory}
         onRestore={restoreVersion}
+        onDelete={deleteVersion}
       />
     </Container>
   );
