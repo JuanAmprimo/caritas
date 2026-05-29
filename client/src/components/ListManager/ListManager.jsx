@@ -1,10 +1,11 @@
 import { Container, Card, Row, Col, Button } from "react-bootstrap";
-import { Plus } from "lucide-react";
+import { History, Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
 import AddFieldModal from "./AddFieldModal";
 import EditItemModal from "./EditItemModal";
 import ItemForm from "./ItemForm";
 import ItemTable from "./ItemTable";
+import VersionHistoryModal from "./VersionHistoryModal";
 import { apiFetch } from "../../utils/auth.js";
 import { useState, useEffect, useRef } from "react";   // ✅ Importar hooks
 import { jsPDF } from "jspdf";       
@@ -30,6 +31,24 @@ const normalizeLoadedItems = (loadedItems, listId) => {
   });
 };
 
+const getCurrentFields = (list) => {
+  if (Array.isArray(list?.currentFields) && (list.currentFields.length > 0 || !Array.isArray(list?.fields))) {
+    return list.currentFields;
+  }
+  return Array.isArray(list?.fields) ? list.fields : [];
+};
+
+const getCurrentItems = (list) => {
+  if (Array.isArray(list?.currentItems) && (list.currentItems.length > 0 || !Array.isArray(list?.items))) {
+    return list.currentItems;
+  }
+  return Array.isArray(list?.items) ? list.items : [];
+};
+
+const getVersionHistory = (list) => (
+  Array.isArray(list?.versionHistory) ? list.versionHistory : []
+);
+
 export default function ListManager({ searchTerm }) {
   const [fields, setFields] = useState([]);
   const [items, setItems] = useState([]);
@@ -45,11 +64,24 @@ export default function ListManager({ searchTerm }) {
   const [draftKey, setDraftKey] = useState(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   const draftStorageKey = useRef(getScopedStorageKey());
+  const listsRef = useRef([]);
   const saveTimer = useRef(null);
   const isLoadingList = useRef(false);
   const ignoreNextAutoSave = useRef(false);
+
+  const syncSavedList = (savedList) => {
+    if (!savedList || savedList.isAutosaved) return;
+
+    const nextLists = listsRef.current.some((list) => list._id === savedList._id)
+      ? listsRef.current.map((list) => (list._id === savedList._id ? savedList : list))
+      : [...listsRef.current, savedList];
+
+    listsRef.current = nextLists;
+    setLists(nextLists);
+  };
 
   useEffect(() => {
     const scopedDraft = localStorage.getItem(draftStorageKey.current);
@@ -79,8 +111,8 @@ export default function ListManager({ searchTerm }) {
         parsed.editingItem)
     ) {
       ignoreNextAutoSave.current = true;
-      setFields(parsed.fields || []);
-      setItems(normalizeLoadedItems(parsed.items || [], parsed.currentListId || loadedDraftKey));
+      setFields(parsed.currentFields || parsed.fields || []);
+      setItems(normalizeLoadedItems(parsed.currentItems || parsed.items || [], parsed.currentListId || loadedDraftKey));
       setListTitle(parsed.title || "");
       setCurrentListId(parsed.currentListId || null);
       setNewItem(parsed.newItem || {});
@@ -103,6 +135,8 @@ export default function ListManager({ searchTerm }) {
           title: listTitle,
           fields,
           items,
+          currentFields: fields,
+          currentItems: items,
           currentListId,
           draftKey,
           newItem,
@@ -142,6 +176,8 @@ export default function ListManager({ searchTerm }) {
             title: listTitle,
             fields,
             items,
+            currentFields: fields,
+            currentItems: items,
             currentListId,
             draftKey,
             newItem,
@@ -177,8 +213,61 @@ export default function ListManager({ searchTerm }) {
     showEditItem,
   ]);
 
+  useEffect(() => {
+    if (!currentListId || !draftKey) return undefined;
+    if (isLoadingList.current) return undefined;
+
+    if (ignoreNextAutoSave.current) {
+      ignoreNextAutoSave.current = false;
+      return undefined;
+    }
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+    }
+
+    setAutoSaveStatus("Guardando cambios actuales...");
+
+    saveTimer.current = setTimeout(async () => {
+      try {
+        const res = await apiFetch(`/.netlify/functions/updateList/${currentListId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: listTitle,
+            fields,
+            items,
+            currentOnly: true,
+            createSnapshot: false,
+            isAutosaved: false,
+          }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          syncSavedList(data);
+          setAutoSaveStatus("Cambios actuales guardados");
+        } else {
+          console.error("Error en autoguardado de lista:", data.error);
+          setAutoSaveStatus("Error en autoguardado");
+        }
+      } catch (err) {
+        console.error("Error en autoguardado de lista:", err);
+        setAutoSaveStatus("Error en autoguardado");
+      } finally {
+        saveTimer.current = null;
+      }
+    }, 900);
+
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+    };
+  }, [currentListId, draftKey, fields, items, listTitle]);
+
   // Traer todas las listas desde MongoDB (usando ref para evitar stale closures)
-  const listsRef = useRef([]);
 
   useEffect(() => {
     const fetchLists = async () => {
@@ -246,6 +335,11 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+
     const trimmedTitle = listTitle.trim();
 
     const currentList = currentListId
@@ -259,14 +353,12 @@ export default function ListManager({ searchTerm }) {
       const res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, fields, items, isAutosaved: false }),
+        body: JSON.stringify({ title: trimmedTitle, fields, items, createSnapshot: true, isAutosaved: false }),
       });
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
-        const nextLists = listsRef.current.map((l) => (l._id === existingList._id ? data : l));
-        setLists(nextLists);
-        listsRef.current = nextLists;
+        syncSavedList(data);
         setCurrentListId(data._id);
         setAutoSaveStatus("Lista guardada ✅");
         alert("Lista guardada con éxito ✅");
@@ -277,14 +369,12 @@ export default function ListManager({ searchTerm }) {
       const res = await apiFetch(`/.netlify/functions/createList`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, fields, items, isAutosaved: false }),
+        body: JSON.stringify({ title: trimmedTitle, fields, items, createSnapshot: true, isAutosaved: false }),
       });
       const data = await res.json();
       if (res.ok) {
         ignoreNextAutoSave.current = true;
-        const nextLists = [...listsRef.current.filter((l) => l._id !== data._id), data];
-        setLists(nextLists);
-        listsRef.current = nextLists;
+        syncSavedList(data);
         setCurrentListId(data._id);
         setDraftKey(createDraftKey());
         setAutoSaveStatus("Lista guardada ✅");
@@ -473,6 +563,33 @@ export default function ListManager({ searchTerm }) {
   // ═══════════════════════════════════════════════════════
   // Cargar lista: carga campos, items y titulo
   // ═══════════════════════════════════════════════════════
+  const currentList = currentListId
+    ? lists.find((list) => list._id === currentListId)
+    : null;
+  const currentVersionHistory = getVersionHistory(currentList);
+
+  const restoreVersion = (version) => {
+    if (!version) return;
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+
+    const versionKey = version._id || version.savedAt || "version";
+    setFields(Array.isArray(version.fields) ? version.fields : []);
+    setItems(normalizeLoadedItems(version.items || [], `${currentListId || "restored"}_${versionKey}`));
+    setListTitle(version.title || listTitle);
+    setNewItem({});
+    setNewFieldName("");
+    setNewFieldType("text");
+    setEditingItem(null);
+    setShowAddField(false);
+    setShowEditItem(false);
+    setShowVersionHistory(false);
+    setAutoSaveStatus("Version cargada");
+  };
+
   const loadListData = async (list) => {
     try {
       if (saveTimer.current) {
@@ -486,8 +603,9 @@ export default function ListManager({ searchTerm }) {
         console.error("Error al cargar lista:", data.error);
         return;
       }
-      setFields(data.fields || []);
-      setItems(normalizeLoadedItems(data.items || [], data._id));
+      syncSavedList(data);
+      setFields(getCurrentFields(data));
+      setItems(normalizeLoadedItems(getCurrentItems(data), data._id));
       setListTitle(data.title || list.title || "");
       setCurrentListId(data._id);
       setNewItem({});
@@ -603,6 +721,14 @@ export default function ListManager({ searchTerm }) {
             </Button>
             <Button
               className="list-button fw-semibold"
+              variant="outline-dark"
+              disabled={!currentListId}
+              onClick={() => setShowVersionHistory(true)}
+            >
+              <History size={16} className="me-1" /> Historial
+            </Button>
+            <Button
+              className="list-button fw-semibold"
               style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
               onClick={downloadPDF}
             >
@@ -659,6 +785,12 @@ export default function ListManager({ searchTerm }) {
         editingItem={editingItem}
         setEditingItem={setEditingItem}
         saveEditItem={saveEditItem}
+      />
+      <VersionHistoryModal
+        show={showVersionHistory}
+        onHide={() => setShowVersionHistory(false)}
+        versions={currentVersionHistory}
+        onRestore={restoreVersion}
       />
     </Container>
   );

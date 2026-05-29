@@ -21,7 +21,17 @@ export async function handler(event, context) {
     if (list.userId.toString() !== userId.toString()) {
       return { statusCode: 403, body: JSON.stringify({ error: "No tienes permiso para ver esta lista" }) };
     }
-    return { statusCode: 200, body: JSON.stringify(list) };
+    const data = list.toObject();
+    if (!Array.isArray(data.currentFields) || (data.currentFields.length === 0 && Array.isArray(data.fields) && data.fields.length > 0)) {
+      data.currentFields = Array.isArray(data.fields) ? data.fields : [];
+    }
+    if (!Array.isArray(data.currentItems) || (data.currentItems.length === 0 && Array.isArray(data.items) && data.items.length > 0)) {
+      data.currentItems = Array.isArray(data.items) ? data.items : [];
+    }
+    if (!Array.isArray(data.versionHistory)) {
+      data.versionHistory = [];
+    }
+    return { statusCode: 200, body: JSON.stringify(data) };
   } catch (err) {
     return { statusCode: err.statusCode || 400, body: JSON.stringify({ error: err.message }) };
   }
