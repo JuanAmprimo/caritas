@@ -213,3 +213,26 @@
     min-width: 0 !important;
   }
 }
+
+/* Mobile-specific stacking for ListManager action buttons */
+.list-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 576px) {
+  .list-actions {
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .list-actions .mobile-full {
+    flex: 1 1 100%;
+  }
+  .list-actions .list-button {
+    white-space: nowrap;
+  }
+  .list-actions .text-muted {
+    flex-basis: 100%;
+    text-align: center;
+    margin-top: 0.25rem;
+  }
+}

@@ -837,7 +837,7 @@ export default function ListManager({ searchTerm }) {
           </Row>
 
           {/* Botones */}
-          <div className="d-flex gap-2 align-items-start mt-3">
+          <div className="d-flex gap-2 align-items-start mt-3 list-actions">
             <Button
               className="list-button fw-semibold"
               style={{ backgroundColor: "#10b981", borderColor: "#10b981" }}
@@ -855,14 +855,6 @@ export default function ListManager({ searchTerm }) {
             </Button>
             <Button
               className="list-button fw-semibold"
-              variant="outline-secondary"
-              onClick={startNewList}
-              disabled={isSavingList || isLoadingListData}
-            >
-              <Plus size={16} className="me-1" /> Nueva Lista
-            </Button>
-            <Button
-              className="list-button fw-semibold"
               variant="outline-dark"
               disabled={!currentListId || isLoadingListData || isSavingList}
               onClick={() => setShowVersionHistory(true)}
@@ -870,7 +862,15 @@ export default function ListManager({ searchTerm }) {
               <History size={16} className="me-1" /> Historial
             </Button>
             <Button
-              className="list-button fw-semibold"
+              className="list-button fw-semibold mobile-full"
+              variant="outline-secondary"
+              onClick={startNewList}
+              disabled={isSavingList || isLoadingListData}
+            >
+              <Plus size={16} className="me-1" /> Nueva Lista
+            </Button>
+            <Button
+              className="list-button fw-semibold mobile-full"
               style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
               onClick={downloadPDF}
               disabled={isDownloadingPDF || isSavingList || isLoadingListData}
