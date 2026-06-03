@@ -25,7 +25,7 @@ export default function App() {
 
       try {
         await refreshAccessToken();
-      } catch (err) {
+      } catch {
         // Si falla el refresh, la sesión expiró → limpiamos y redirigimos
         clearTokens();
         localStorage.removeItem('username');
