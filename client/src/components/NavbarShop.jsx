@@ -64,7 +64,7 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
           {/* Buscador */}
           <Form 
             className="d-flex mx-auto my-2 my-lg-0" 
-            style={{ maxWidth: '500px', width: '100%' }}
+            style={{ maxWidth: '340px', width: '100%' }}
             onSubmit={handleSearch}
           >
             <Form.Control
