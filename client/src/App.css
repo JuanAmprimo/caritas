@@ -200,4 +200,16 @@
   .app-navbar .btn {
     width: 100%;
   }
+
+  .container,
+  .container-fluid,
+  .row,
+  .col,
+  .table-responsive,
+  .custom-table,
+  iframe {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
 }

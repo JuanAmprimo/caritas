@@ -91,7 +91,7 @@ export default function App() {
           setUsername={setUsername}
         />
 
-        <div className="flex-grow-1 container mt-4">
+        <div className="flex-grow-1 container-fluid px-3 px-md-4 mt-4">
           <Routes>
             {/* Rutas principales */}
             <Route
