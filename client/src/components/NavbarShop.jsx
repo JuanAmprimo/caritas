@@ -43,7 +43,7 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
   };
 
   return (
-    <Navbar expand="lg" className="app-navbar shadow-sm" style={{ backgroundColor: '#6366f1' }}>
+    <Navbar expand="md" className="app-navbar shadow-sm" style={{ backgroundColor: '#6366f1' }}>
       <Container fluid>
         <Navbar.Brand
           href="#"
@@ -63,8 +63,8 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
         <Navbar.Collapse id="navbar-nav">
           {/* Buscador */}
           <Form 
-            className="d-flex mx-auto my-2 my-lg-0" 
-            style={{ maxWidth: '340px', width: '100%' }}
+            className="d-flex flex-column flex-md-row align-items-center gap-2 mx-auto my-2 my-lg-0" 
+            style={{ maxWidth: '300px', width: '100%' }}
             onSubmit={handleSearch}
           >
             <Form.Control
@@ -72,12 +72,12 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
               placeholder="Buscar donación..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="me-2"
-              style={{ borderRadius: '25px' }}
+              className="me-md-2"
+              style={{ borderRadius: '25px', flex: 1, minWidth: '0' }}
             />
             <Button 
               variant="light" 
-              style={{ borderRadius: '25px', minWidth: '100px' }}
+              style={{ borderRadius: '25px', minWidth: '90px' }}
               type="submit"
             >
               <Search size={18} className="me-1" />
