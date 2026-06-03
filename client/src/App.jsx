@@ -3,6 +3,7 @@ import NavbarShop from './components/NavbarShop';
 import Footer from './components/Footer';
 import ListManager from './components/ListManager/ListManager';
 import PriceCalculator from './components/PriceCalculator/PriceCalculator';
+import DocumentManager from './components/Documents/DocumentManager';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import { useState, useEffect } from 'react';
@@ -108,6 +109,16 @@ export default function App() {
               element={
                 isLoggedIn ? (
                   <PriceCalculator searchTerm={searchTerm} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                isLoggedIn ? (
+                  <DocumentManager />
                 ) : (
                   <Navigate to="/login" replace />
                 )

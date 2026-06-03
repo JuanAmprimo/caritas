@@ -1,5 +1,5 @@
 import { Container, Nav, Navbar, Form, Button, NavDropdown } from 'react-bootstrap';
-import { Search, List, Calculator, User } from 'lucide-react';
+import { Search, List, Calculator, User, FileText } from 'lucide-react';
 import CaritasLogo from '../assets/caritas-logo.png'; 
 import { NavLink, useNavigate } from "react-router-dom";
 import DeleteAccountButton from "./DeleteAccountButton"; // 🔹 importar el botón
@@ -102,6 +102,14 @@ export default function NavbarShop({ searchTerm, setSearchTerm, isLoggedIn, user
             >
               <Calculator size={20} className="me-1" />
               Calculadora
+            </Nav.Link>
+            <Nav.Link
+              as={NavLink}
+              to="/documents"
+              className="text-white fw-semibold mx-2 nav-link-custom"
+            >
+              <FileText size={20} className="me-1" />
+              Documentos
             </Nav.Link>
 
             {/* 🔹 Dropdown de Ingresar */}
