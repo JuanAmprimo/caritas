@@ -69,6 +69,8 @@ export default function ListManager({ searchTerm }) {
   const [isLoadingListData, setIsLoadingListData] = useState(false);
   const [deletingListId, setDeletingListId] = useState(null);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteError, setPasteError] = useState("");
 
   const draftStorageKey = useRef(getScopedStorageKey());
   const listsRef = useRef([]);
@@ -328,6 +330,74 @@ export default function ListManager({ searchTerm }) {
       });
       setItems(updatedItems);
     }
+  };
+
+  const detectDelimiter = (text) => {
+    if (text.includes("\t")) return "\t";
+    if (text.includes(";")) return ";";
+    if (text.includes(",")) return ",";
+    if (text.includes("|")) return "|";
+    return "\t";
+  };
+
+  const parseTableText = (text) => {
+    const trimmed = String(text || "").trim();
+    if (!trimmed) return null;
+
+    const rows = trimmed
+      .split(/\r?\n/)
+      .map((row) => row.replace(/\r$/, ""))
+      .filter((row) => row.trim().length > 0);
+
+    if (rows.length === 0) return null;
+
+    const delimiter = detectDelimiter(rows[0]);
+    const splitRow = (row) => row.split(delimiter).map((cell) => cell.trim());
+
+    const headers = splitRow(rows[0]);
+    if (headers.every((header) => header === "")) return null;
+
+    const fieldsFromHeaders = headers.map((header, index) => ({
+      id: `field_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
+      name: header.trim() || `campo_${index + 1}`,
+      type: "text",
+    }));
+
+    const itemsFromRows = rows.slice(1).map((row, rowIndex) => {
+      const cells = splitRow(row);
+      const item = { id: `paste_${Date.now()}_${rowIndex}` };
+      headers.forEach((header, colIndex) => {
+        const fieldName = header.trim() || `campo_${colIndex + 1}`;
+        item[fieldName] = cells[colIndex] ?? "";
+      });
+      return item;
+    });
+
+    return {
+      fields: fieldsFromHeaders,
+      items: itemsFromRows,
+    };
+  };
+
+  const importFromPaste = () => {
+    setPasteError("");
+    const parsed = parseTableText(pasteText);
+    if (!parsed) {
+      setPasteError("No se detectó una tabla válida. Pega datos tabulados desde Excel, Word o una tabla CSV.");
+      return;
+    }
+
+    if ((fields.length > 0 || items.length > 0) && !window.confirm("Importar la tabla reemplazará la lista actual. ¿Deseas continuar?")) {
+      return;
+    }
+
+    setFields(parsed.fields);
+    setItems(parsed.items);
+    setNewItem({});
+    setCurrentListId(null);
+    setDraftKey(createDraftKey());
+    setListTitle((prevTitle) => prevTitle || "Lista importada");
+    setPasteError("");
   };
 
   // ═══════════════════════════════════════════════════════
@@ -671,6 +741,31 @@ export default function ListManager({ searchTerm }) {
           <h4 className="mb-0">📋 Gestor de Listas</h4>
         </Card.Header>
         <Card.Body>
+          <Row className="mb-4">
+            <Col>
+              <h5>Pegar tabla desde Excel / Word / CSV</h5>
+              <p className="text-muted small">
+                Pega aquí una tabla copiando filas y columnas, luego presiona "Importar tabla".
+              </p>
+              <textarea
+                className="form-control mb-2"
+                rows={5}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="Pega aquí tu tabla desde Excel, Word o cualquier archivo con columnas..."
+              />
+              {pasteError && <div className="text-danger small mb-2">{pasteError}</div>}
+              <Button
+                className="list-button fw-semibold mb-4"
+                style={{ backgroundColor: "#6d28d9", borderColor: "#6d28d9" }}
+                size="sm"
+                onClick={importFromPaste}
+              >
+                Importar tabla
+              </Button>
+            </Col>
+          </Row>
+
           {/* Campos */}
           <Row className="mb-4">
             <Col>
