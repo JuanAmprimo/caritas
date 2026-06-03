@@ -1,4 +1,4 @@
-import { Container, Card, Row, Col, Button } from "react-bootstrap";
+import { Container, Card, Row, Col, Button, Spinner } from "react-bootstrap";
 import { History, Plus } from "lucide-react";
 import FieldBadge from "./FieldBadge";
 import AddFieldModal from "./AddFieldModal";
@@ -65,6 +65,10 @@ export default function ListManager({ searchTerm }) {
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sin cambios");
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [isSavingList, setIsSavingList] = useState(false);
+  const [isLoadingListData, setIsLoadingListData] = useState(false);
+  const [deletingListId, setDeletingListId] = useState(null);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   const draftStorageKey = useRef(getScopedStorageKey());
   const listsRef = useRef([]);
@@ -335,6 +339,7 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
+    setIsSavingList(true);
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -349,43 +354,48 @@ export default function ListManager({ searchTerm }) {
       (l) => l.title.toLowerCase() === trimmedTitle.toLowerCase()
     );
 
-    if (existingList) {
-      const res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, fields, items, createSnapshot: true, isAutosaved: false }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        ignoreNextAutoSave.current = true;
-        syncSavedList(data);
-        setCurrentListId(data._id);
-        setAutoSaveStatus("Lista guardada ✅");
-        alert("Lista guardada con éxito ✅");
+    try {
+      if (existingList) {
+        const res = await apiFetch(`/.netlify/functions/updateList/${existingList._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: trimmedTitle, fields, items, createSnapshot: true, isAutosaved: false }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          ignoreNextAutoSave.current = true;
+          syncSavedList(data);
+          setCurrentListId(data._id);
+          setAutoSaveStatus("Lista guardada ✅");
+          alert("Lista guardada con éxito ✅");
+        } else {
+          alert(data.error || "Error al guardar la lista");
+        }
       } else {
-        alert(data.error || "Error al guardar la lista");
+        const res = await apiFetch(`/.netlify/functions/createList`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: trimmedTitle, fields, items, createSnapshot: true, isAutosaved: false }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          ignoreNextAutoSave.current = true;
+          syncSavedList(data);
+          setCurrentListId(data._id);
+          setDraftKey(createDraftKey());
+          setAutoSaveStatus("Lista guardada ✅");
+          alert("Lista guardada con éxito ✅");
+        } else {
+          alert(data.error || "Error al guardar la lista");
+        }
       }
-    } else {
-      const res = await apiFetch(`/.netlify/functions/createList`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, fields, items, createSnapshot: true, isAutosaved: false }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        ignoreNextAutoSave.current = true;
-        syncSavedList(data);
-        setCurrentListId(data._id);
-        setDraftKey(createDraftKey());
-        setAutoSaveStatus("Lista guardada ✅");
-        alert("Lista guardada con éxito ✅");
-      } else {
-        alert(data.error || "Error al guardar la lista");
-      }
+    } finally {
+      setIsSavingList(false);
     }
   };
 
   const deleteList = async (id) => {
+    setDeletingListId(id);
     try {
       const res = await apiFetch(`/.netlify/functions/deleteList/${id}`, {
         method: "DELETE",
@@ -404,6 +414,8 @@ export default function ListManager({ searchTerm }) {
       }
     } catch (err) {
       console.error("Error al eliminar lista:", err);
+    } finally {
+      setDeletingListId(null);
     }
   };
 
@@ -485,10 +497,12 @@ export default function ListManager({ searchTerm }) {
       return;
     }
 
-    const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    let y = margin;
+    setIsDownloadingPDF(true);
+    try {
+      const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 15;
+      let y = margin;
 
     doc.setFontSize(18);
     doc.setTextColor(139, 92, 246);
@@ -551,6 +565,9 @@ export default function ListManager({ searchTerm }) {
     doc.setTextColor(136, 136, 136);
     doc.text(`Generado el ${new Date().toLocaleString("es-AR")}`, pageWidth / 2, y, { align: "center" });
     doc.save(`${listTitle.trim() || "lista"}.pdf`);
+  } finally {
+      setIsDownloadingPDF(false);
+    }
   };
 
   const filteredItems = items.filter((item) =>
@@ -610,6 +627,7 @@ export default function ListManager({ searchTerm }) {
   };
 
   const loadListData = async (list) => {
+    setIsLoadingListData(true);
     try {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
@@ -640,6 +658,7 @@ export default function ListManager({ searchTerm }) {
     } finally {
       setTimeout(() => {
         isLoadingList.current = false;
+        setIsLoadingListData(false);
       }, 0);
     }
   };
@@ -728,20 +747,29 @@ export default function ListManager({ searchTerm }) {
               className="list-button fw-semibold"
               style={{ backgroundColor: "#10b981", borderColor: "#10b981" }}
               onClick={saveList}
+              disabled={isSavingList || isLoadingListData}
             >
-              Guardar Lista
+              {isSavingList ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Lista"
+              )}
             </Button>
             <Button
               className="list-button fw-semibold"
               variant="outline-secondary"
               onClick={startNewList}
+              disabled={isSavingList || isLoadingListData}
             >
               <Plus size={16} className="me-1" /> Nueva Lista
             </Button>
             <Button
               className="list-button fw-semibold"
               variant="outline-dark"
-              disabled={!currentListId}
+              disabled={!currentListId || isLoadingListData || isSavingList}
               onClick={() => setShowVersionHistory(true)}
             >
               <History size={16} className="me-1" /> Historial
@@ -750,8 +778,16 @@ export default function ListManager({ searchTerm }) {
               className="list-button fw-semibold"
               style={{ backgroundColor: "#8b5cf6", borderColor: "#8b5cf6" }}
               onClick={downloadPDF}
+              disabled={isDownloadingPDF || isSavingList || isLoadingListData}
             >
-              Descargar Lista
+              {isDownloadingPDF ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Generando...
+                </>
+              ) : (
+                "Descargar Lista"
+              )}
             </Button>
             <div className="text-muted small align-self-center">{autoSaveStatus}</div>
           </div>
@@ -766,20 +802,28 @@ export default function ListManager({ searchTerm }) {
               <div
                 key={list._id}
                 className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
-                style={{ cursor: "pointer", backgroundColor: "rgba(255,255,255,0.7)" }}
-                onClick={() => loadListData(list)}
+                style={{
+                  cursor: isLoadingListData ? "wait" : "pointer",
+                  backgroundColor: "rgba(255,255,255,0.7)",
+                }}
+                onClick={() => {
+                  if (!isLoadingListData) {
+                    loadListData(list);
+                  }
+                }}
               >
                 <span className="fw-bold small">{list.title}</span>
                 <Button
                   size="sm"
                   variant="outline-danger"
                   style={{ padding: "0 6px", fontSize: "12px" }}
+                  disabled={deletingListId === list._id || isSavingList || isLoadingListData}
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteList(list._id);
                   }}
                 >
-                  ×
+                  {deletingListId === list._id ? "..." : "×"}
                 </Button>
               </div>
             ))
