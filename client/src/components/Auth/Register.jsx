@@ -1,13 +1,24 @@
-import { useState } from "react";
-import { Container, Card, Form, Button, Toast, ToastContainer } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Container, Card, Form, Button, Modal } from "react-bootstrap";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: "", email: "", confirmEmail: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
-  const [showToast, setShowToast] = useState(false);       // 🔹 estado para mostrar el toast
-  const [toastMessage, setToastMessage] = useState("");    // 🔹 mensaje del toast
-  const [toastVariant, setToastVariant] = useState("success"); // 🔹 color del toast (success/danger)
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // Redirigir al login después de que el usuario cierre el modal o después de 3 segundos
+  useEffect(() => {
+    if (isSuccess && showModal) {
+      const timer = setTimeout(() => {
+        navigate("/login");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, showModal, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,19 +62,27 @@ export default function Register() {
         const data = await res.json();
 
         if (res.ok) {
-          setToastMessage("Registro exitoso ✅. Ahora puedes iniciar sesión.");
-          setToastVariant("success");
-          setShowToast(true);
+          setModalMessage("✅ Registro exitoso. Te redirigiremos al login en 3 segundos...");
+          setIsSuccess(true);
+          setShowModal(true);
         } else {
-          setToastMessage(data.error || "Error al registrarse");
-          setToastVariant("danger");
-          setShowToast(true);
+          setModalMessage(`❌ Error: ${data.error || "Error al registrarse"}`);
+          setIsSuccess(false);
+          setShowModal(true);
         }
       } catch {
-        setToastMessage("Error de conexión con el servidor");
-        setToastVariant("danger");
-        setShowToast(true);
+        setModalMessage("❌ Error de conexión con el servidor");
+        setIsSuccess(false);
+        setShowModal(true);
       }
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (isSuccess) {
+      navigate("/login");
+    } else {
+      setShowModal(false);
     }
   };
 
@@ -157,15 +176,17 @@ export default function Register() {
         </Card.Body>
       </Card>
 
-      {/* 🔹 Toast de feedback */}
-      <ToastContainer position="top-end" className="p-3">
-        <Toast bg={toastVariant} show={showToast} onClose={() => setShowToast(false)} delay={3000} autohide>
-          <Toast.Header>
-            <strong className="me-auto">Sistema</strong>
-          </Toast.Header>
-          <Toast.Body>{toastMessage}</Toast.Body>
-        </Toast>
-      </ToastContainer>
+      {/* Modal de feedback */}
+      <Modal show={showModal} onHide={handleCloseModal} centered backdrop="static" keyboard={false}>
+        <Modal.Body className="text-center py-4">
+          <h5 className="mb-3">{modalMessage}</h5>
+          {!isSuccess && (
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cerrar
+            </Button>
+          )}
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 }
