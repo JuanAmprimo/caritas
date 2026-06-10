@@ -67,8 +67,10 @@ export default function ListManager({ searchTerm }) {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [isSavingList, setIsSavingList] = useState(false);
   const [isLoadingListData, setIsLoadingListData] = useState(false);
+  const [loadingListId, setLoadingListId] = useState(null);
   const [deletingListId, setDeletingListId] = useState(null);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [versionAction, setVersionAction] = useState({ id: null, type: null });
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState("");
 
@@ -658,9 +660,11 @@ export default function ListManager({ searchTerm }) {
     if (!currentListId) return;
     if (!window.confirm("¿Eliminar esta versión del historial?")) return;
 
-    const versionId = version._id || version.savedAt;
+    const versionKey = version._id || version.savedAt;
+    setVersionAction({ id: versionKey, type: "delete" });
+
     try {
-      const res = await apiFetch(`/.netlify/functions/deleteVersion/${currentListId}/${versionId}`, {
+      const res = await apiFetch(`/.netlify/functions/deleteVersion/${currentListId}/${versionKey}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -671,33 +675,42 @@ export default function ListManager({ searchTerm }) {
       }
     } catch (err) {
       console.error("Error al eliminar versión:", err);
+    } finally {
+      setVersionAction({ id: null, type: null });
     }
   };
 
   const restoreVersion = (version) => {
     if (!version) return;
 
+    const versionKey = version._id || version.savedAt || "version";
+    setVersionAction({ id: versionKey, type: "restore" });
+
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
 
-    const versionKey = version._id || version.savedAt || "version";
-    setFields(Array.isArray(version.fields) ? version.fields : []);
-    setItems(normalizeLoadedItems(version.items || [], `${currentListId || "restored"}_${versionKey}`));
-    setListTitle(version.title || listTitle);
-    setNewItem({});
-    setNewFieldName("");
-    setNewFieldType("text");
-    setEditingItem(null);
-    setShowAddField(false);
-    setShowEditItem(false);
-    setShowVersionHistory(false);
-    setAutoSaveStatus("Version cargada");
+    setTimeout(() => {
+      setFields(Array.isArray(version.fields) ? version.fields : []);
+      setItems(normalizeLoadedItems(version.items || [], `${currentListId || "restored"}_${versionKey}`));
+      setListTitle(version.title || listTitle);
+      setNewItem({});
+      setNewFieldName("");
+      setNewFieldType("text");
+      setEditingItem(null);
+      setShowAddField(false);
+      setShowEditItem(false);
+      setShowVersionHistory(false);
+      setAutoSaveStatus("Version cargada");
+      setVersionAction({ id: null, type: null });
+    }, 120);
   };
 
   const loadListData = async (list) => {
     setIsLoadingListData(true);
+    setLoadingListId(list._id);
+
     try {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
@@ -729,6 +742,7 @@ export default function ListManager({ searchTerm }) {
       setTimeout(() => {
         isLoadingList.current = false;
         setIsLoadingListData(false);
+        setLoadingListId(null);
       }, 0);
     }
   };
@@ -907,7 +921,16 @@ export default function ListManager({ searchTerm }) {
                   }
                 }}
               >
-                <span className="fw-bold small">{list.title}</span>
+                <span className="fw-bold small d-flex align-items-center gap-2">
+                  {loadingListId === list._id ? (
+                    <>
+                      <Spinner animation="border" size="sm" />
+                      Cargando...
+                    </>
+                  ) : (
+                    list.title
+                  )}
+                </span>
                 <Button
                   size="sm"
                   variant="outline-danger"
@@ -950,6 +973,7 @@ export default function ListManager({ searchTerm }) {
         versions={currentVersionHistory}
         onRestore={restoreVersion}
         onDelete={deleteVersion}
+        processingVersion={versionAction}
       />
     </Container>
   );

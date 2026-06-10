@@ -1,4 +1,4 @@
-import { Button, ListGroup, Modal } from "react-bootstrap";
+import { Button, ListGroup, Modal, Spinner } from "react-bootstrap";
 import { RotateCcw, Trash2 } from "lucide-react";
 
 const formatDate = (dateValue) => {
@@ -13,7 +13,7 @@ const formatDate = (dateValue) => {
   });
 };
 
-export default function VersionHistoryModal({ show, onHide, versions, onRestore, onDelete }) {
+export default function VersionHistoryModal({ show, onHide, versions, onRestore, onDelete, processingVersion }) {
   const sortedVersions = [...(Array.isArray(versions) ? versions : [])].sort(
     (a, b) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0),
   );
@@ -44,17 +44,31 @@ export default function VersionHistoryModal({ show, onHide, versions, onRestore,
                     size="sm"
                     variant="outline-danger"
                     className="d-flex align-items-center gap-1"
+                    disabled={Boolean(processingVersion?.id)}
                     onClick={() => onDelete?.(version)}
                   >
-                    <Trash2 size={14} /> Eliminar
+                    {processingVersion?.id === (version._id || version.savedAt || index) && processingVersion.type === "delete" ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      <>
+                        <Trash2 size={14} /> Eliminar
+                      </>
+                    )}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline-primary"
                     className="d-flex align-items-center gap-1"
+                    disabled={Boolean(processingVersion?.id)}
                     onClick={() => onRestore(version)}
                   >
-                    <RotateCcw size={14} /> Restaurar
+                    {processingVersion?.id === (version._id || version.savedAt || index) && processingVersion.type === "restore" ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : (
+                      <>
+                        <RotateCcw size={14} /> Restaurar
+                      </>
+                    )}
                   </Button>
                 </div>
               </ListGroup.Item>
